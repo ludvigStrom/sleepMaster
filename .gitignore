@@ -1,0 +1,35 @@
+# Build products
+Build/
+DerivedData/
+*.app
+*.dSYM
+*.ipa
+*.pkg
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Local signing / notarization (never commit)
+Config/Signing.local.xcconfig
+Scripts/release.env
+*.p12
+*.p8
+*.cer
+*.certSigningRequest
+*.mobileprovision
+AuthKey_*.p8
+*notary*.json
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+!Scripts/release.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+*.swp

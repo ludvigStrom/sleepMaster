@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+# Installer runs as root. Launch the menu-bar app as the logged-in console user
+# so SMAppService can register the login item for that account.
+CONSOLE_USER="$(stat -f '%Su' /dev/console)"
+if [[ -n "${CONSOLE_USER}" && "${CONSOLE_USER}" != "root" ]]; then
+    sudo -u "${CONSOLE_USER}" open -a /Applications/SleepMaster.app || true
+fi
+
+exit 0
