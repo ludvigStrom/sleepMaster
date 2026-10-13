@@ -59,10 +59,11 @@ if [[ "${SKIP_NOTARIZATION}" != "1" ]]; then
   fi
 fi
 
-DERIVED_DATA_DIR="${PROJECT_DIR}/Build/DerivedData"
+DERIVED_DATA_DIR="${PROJECT_DIR}/Build/DerivedDataRelease"
 DIST_DIR="${PROJECT_DIR}/Build/dist"
 PAYLOAD_ROOT="${DIST_DIR}/payload"
 SCRIPTS_DIR="${PROJECT_DIR}/Scripts/pkg_scripts"
+COMPONENT_PLIST="${PROJECT_DIR}/Installer/macOS/AppComponent.plist"
 ENTITLEMENTS_SRC="${PROJECT_DIR}/SleepMaster/SleepMaster.entitlements"
 ENTITLEMENTS_TMP="${DIST_DIR}/SleepMaster.release.entitlements"
 FINAL_PKG_PATH="${DIST_DIR}/${PKG_FILE_BASENAME}-${VERSION}.pkg"
@@ -306,6 +307,7 @@ echo "==> Building signed installer pkg"
 pkgbuild \
   --root "${PAYLOAD_ROOT}" \
   --install-location / \
+  --component-plist "${COMPONENT_PLIST}" \
   --scripts "${SCRIPTS_DIR}" \
   --identifier "${PKG_ID}" \
   --version "${VERSION}" \
