@@ -1,8 +1,12 @@
 # SleepMaster
 
-macOS menu-bar extra that toggles `pmset -a disablesleep`.
+macOS menu-bar extra that keeps the Mac awake.
 
-Click the moon icon → **Do not go to sleep**. macOS asks for your password. The setting survives quit and reboot.
+Click the moon icon → **Do not go to sleep**. Idle sleep is blocked with an IOKit power assertion (no password). **Stay awake with the lid closed** also sets `pmset disablesleep`. That path asks for a password until you approve the Sleepmaster helper in System Settings › General › Login Items. After approval, toggling no longer asks.
+
+Sleep is allowed again when you turn the toggle off, when you quit, or when the helper notices the app crashed. On battery below 10% the lid-closed setting is turned off so a closed Mac does not drain flat.
+
+If an older version left `SleepDisabled` on, the app offers a one-time reset.
 
 After a `/Applications` install it starts at login.
 

@@ -23,7 +23,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>SleepMaster uses AppleScript to run pmset with administrator privileges so it can prevent the Mac from sleeping.</string>
+	<string>SleepMaster may ask for your password to keep the Mac awake with the lid closed, until you approve its helper in System Settings. It also uses this to reset an older install that left sleep disabled.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

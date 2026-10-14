@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -5,17 +6,72 @@ final class SleepPreventer: ObservableObject {
     @Published private(set) var isSleepDisabled = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var isBusy = false
+    @Published var lidClosedEnabled: Bool
+    @Published private(set) var helperNeedsApproval = false
+
+    private let controller: SleepController
+    private let lidClosed: LidClosedBackend
+    let powerMonitor: PowerMonitoring
+    private let lidClosedBatteryCutoff: Int
+    private let defaults: UserDefaults
+    private var lidClosedHeld = false
+
+    static let lidClosedDefaultsKey = "lidClosedEnabled"
 
     var statusText: String {
         isSleepDisabled ? "Sleep disabled" : "Sleep allowed"
     }
 
-    init() {
+    convenience init() {
+        self.init(
+            controller: AssertionSleepController(),
+            lidClosed: CompositeLidClosedBackend(),
+            powerMonitor: PowerMonitor()
+        )
+    }
+
+    convenience init(controller: SleepController) {
+        self.init(
+            controller: controller,
+            lidClosed: NoOpLidClosedBackend(),
+            powerMonitor: nil,
+            lidClosedBatteryCutoff: LidClosedSafety.defaultCutoffPercent,
+            defaults: .standard
+        )
+    }
+
+    init(
+        controller: SleepController,
+        lidClosed: LidClosedBackend,
+        powerMonitor: PowerMonitoring? = nil,
+        lidClosedBatteryCutoff: Int = LidClosedSafety.defaultCutoffPercent,
+        defaults: UserDefaults = .standard
+    ) {
+        self.controller = controller
+        self.lidClosed = lidClosed
+        self.powerMonitor = powerMonitor ?? IdlePowerMonitor()
+        self.lidClosedBatteryCutoff = lidClosedBatteryCutoff
+        self.defaults = defaults
+        if defaults.object(forKey: Self.lidClosedDefaultsKey) == nil {
+            lidClosedEnabled = true
+        } else {
+            lidClosedEnabled = defaults.bool(forKey: Self.lidClosedDefaultsKey)
+        }
         refresh()
+        refreshHelperStatus()
+        self.powerMonitor.addChangeHandler { [weak self] in
+            self?.applyBatteryCutoff()
+        }
+        self.powerMonitor.start()
     }
 
     func refresh() {
-        isSleepDisabled = Self.readSleepDisabled()
+        isSleepDisabled = controller.isActive
+        refreshHelperStatus()
+    }
+
+    func refreshHelperStatus() {
+        helperNeedsApproval = lidClosed.needsApproval
     }
 
     func toggle() {
@@ -29,79 +85,105 @@ final class SleepPreventer: ObservableObject {
         defer { isBusy = false }
 
         do {
-            try Self.runPmset(disabled: disabled)
+            if disabled {
+                try controller.start()
+                if lidClosedEnabled {
+                    do {
+                        try lidClosed.setSleepDisabled(true)
+                        lidClosedHeld = true
+                    } catch {
+                        try? controller.stop()
+                        throw error
+                    }
+                }
+            } else {
+                try releaseLidClosed()
+                try controller.stop()
+            }
             refresh()
         } catch {
             refresh()
-            if Self.isUserCanceled(error) {
+            if SleepControlError.isUserCanceled(error) {
                 return
             }
             errorMessage = error.localizedDescription
         }
     }
 
-    private static func readSleepDisabled() -> Bool {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
-        process.arguments = ["-g"]
-        let stdout = Pipe()
-        process.standardOutput = stdout
-        process.standardError = Pipe()
+    func setLidClosedEnabled(_ enabled: Bool) {
+        let previous = lidClosedEnabled
+        lidClosedEnabled = enabled
+        defaults.set(enabled, forKey: Self.lidClosedDefaultsKey)
+        errorMessage = nil
+
+        guard isSleepDisabled else { return }
 
         do {
-            try process.run()
-            process.waitUntilExit()
+            if enabled {
+                try lidClosed.setSleepDisabled(true)
+                lidClosedHeld = true
+            } else {
+                try releaseLidClosed()
+            }
         } catch {
-            return false
-        }
-
-        let output = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        for line in output.split(whereSeparator: \.isNewline) {
-            let parts = line.split(whereSeparator: \.isWhitespace)
-            guard parts.count >= 2, parts[0] == "SleepDisabled" else { continue }
-            return parts[1] == "1"
-        }
-        return false
-    }
-
-    private static func runPmset(disabled: Bool) throws {
-        let value = disabled ? "1" : "0"
-        let source = "do shell script \"/usr/bin/pmset -a disablesleep \(value)\" with administrator privileges"
-        guard let appleScript = NSAppleScript(source: source) else {
-            throw SleepControlError.couldNotCreateScript
-        }
-
-        var errorInfo: NSDictionary?
-        appleScript.executeAndReturnError(&errorInfo)
-        if let errorInfo {
-            throw SleepControlError.appleScript(errorInfo)
+            lidClosedEnabled = previous
+            defaults.set(previous, forKey: Self.lidClosedDefaultsKey)
+            if !SleepControlError.isUserCanceled(error) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
-    private static func isUserCanceled(_ error: Error) -> Bool {
-        guard let sleepError = error as? SleepControlError,
-              case .appleScript(let info) = sleepError,
-              let number = info[NSAppleScript.errorNumber] as? Int
-        else {
-            return false
+    func stop() {
+        setSleepDisabled(false)
+    }
+
+    func openHelperApproval() {
+        if let composite = lidClosed as? CompositeLidClosedBackend {
+            composite.openApproval()
         }
-        return number == -128
+        refreshHelperStatus()
+    }
+
+    private func releaseLidClosed() throws {
+        guard lidClosedHeld || lidClosedEnabled else { return }
+        try lidClosed.setSleepDisabled(false)
+        lidClosedHeld = false
+    }
+
+    private func applyBatteryCutoff() {
+        guard lidClosedHeld else { return }
+        guard LidClosedSafety.shouldDisableLidClosed(
+            isOnAC: powerMonitor.isOnAC,
+            batteryPercent: powerMonitor.batteryPercent,
+            cutoff: lidClosedBatteryCutoff
+        ) else { return }
+
+        do {
+            try lidClosed.setSleepDisabled(false)
+            lidClosedHeld = false
+            NSLog(
+                "SleepMaster: lid-closed off; battery %d%% below %d%%",
+                powerMonitor.batteryPercent ?? -1,
+                lidClosedBatteryCutoff
+            )
+        } catch {
+            if !SleepControlError.isUserCanceled(error) {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 }
 
-private enum SleepControlError: LocalizedError {
-    case couldNotCreateScript
-    case appleScript(NSDictionary)
+@MainActor
+private final class IdlePowerMonitor: PowerMonitoring {
+    var isOnAC = true
+    var batteryPercent: Int?
+    private var changeHandlers: [() -> Void] = []
 
-    var errorDescription: String? {
-        switch self {
-        case .couldNotCreateScript:
-            return "Could not create the administrator script."
-        case .appleScript(let info):
-            if let message = info[NSAppleScript.errorMessage] as? String, !message.isEmpty {
-                return message
-            }
-            return "Could not change the sleep setting."
-        }
+    func addChangeHandler(_ handler: @escaping () -> Void) {
+        changeHandlers.append(handler)
     }
+
+    func start() {}
 }

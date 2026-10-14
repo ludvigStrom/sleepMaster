@@ -3,54 +3,32 @@ import SwiftUI
 
 @main
 struct SleepMasterApp: App {
-    @StateObject private var sleepPreventer = SleepPreventer()
-
-    init() {
-        LoginItem.registerIfNeeded()
-    }
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         MenuBarExtra {
-            MenuContent(sleepPreventer: sleepPreventer)
+            MenuBarPopover(state: appDelegate.appState)
         } label: {
-            Label(
-                "SleepMaster",
-                systemImage: sleepPreventer.isSleepDisabled ? "moon.zzz.fill" : "moon.zzz"
-            )
+            MenuBarIcon(state: appDelegate.appState)
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
     }
 }
 
-struct MenuContent: View {
-    @ObservedObject var sleepPreventer: SleepPreventer
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let appState = AppState()
 
-    var body: some View {
-        Group {
-            Toggle(
-                "Do not go to sleep",
-                isOn: Binding(
-                    get: { sleepPreventer.isSleepDisabled },
-                    set: { _ in sleepPreventer.toggle() }
-                )
-            )
-            .disabled(sleepPreventer.isBusy)
-
-            Text(sleepPreventer.statusText)
-
-            if let errorMessage = sleepPreventer.errorMessage {
-                Text(errorMessage)
-            }
-
-            Divider()
-
-            Button("Quit SleepMaster") {
-                NSApplication.shared.terminate(nil)
-            }
-            .keyboardShortcut("q")
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        LoginItem.registerIfNeeded()
+        if NSClassFromString("XCTestCase") == nil {
+            HelperClient.registerIfNeeded()
+            appState.refresh()
+            LegacySleepReset.offerIfNeeded()
         }
-        .onAppear {
-            sleepPreventer.refresh()
-        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        appState.stop()
     }
 }
