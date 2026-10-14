@@ -47,6 +47,7 @@ struct MenuBarPopover: View {
             modeSection
             lidClosedRow
             plugOnlyRow
+            displaySleepRow
             if state.helperNeedsApproval {
                 Button("Approve in System Settings") {
                     state.openHelperApproval()
@@ -262,6 +263,36 @@ struct MenuBarPopover: View {
             }
             Spacer(minLength: 8)
             Toggle("Only while plugged in", isOn: $state.onlyWhilePluggedIn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(SleepTheme.amber)
+                .disabled(state.isBusy)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(SleepTheme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var displaySleepRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(SleepTheme.iconWell)
+                    .frame(width: 28, height: 28)
+                Image(systemName: "sun.min")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(state.allowDisplaySleep ? SleepTheme.amber : SleepTheme.muted)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Let the display sleep")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SleepTheme.text)
+                Text("The screen can turn off; the Mac stays awake")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(SleepTheme.muted)
+            }
+            Spacer(minLength: 8)
+            Toggle("Let the display sleep", isOn: $state.allowDisplaySleep)
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .tint(SleepTheme.amber)

@@ -5,6 +5,8 @@ final class FakeSleepController: SleepController {
     var isActive = false
     var startCallCount = 0
     var stopCallCount = 0
+    var setAllowDisplaySleepCallCount = 0
+    var allowDisplaySleep = false
     var startError: Error?
     var stopError: Error?
 
@@ -22,6 +24,11 @@ final class FakeSleepController: SleepController {
             throw stopError
         }
         isActive = false
+    }
+
+    func setAllowDisplaySleep(_ allow: Bool) throws {
+        setAllowDisplaySleepCallCount += 1
+        allowDisplaySleep = allow
     }
 }
 

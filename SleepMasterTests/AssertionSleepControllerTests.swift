@@ -13,6 +13,7 @@ final class AssertionSleepControllerTests: XCTestCase {
             pmsetAssertionsContainSleepmaster(),
             "pmset -g assertions should list Sleepmaster after start."
         )
+        XCTAssertEqual(sleepmasterAssertionTypes(), ["PreventUserIdleDisplaySleep"])
 
         try controller.stop()
         XCTAssertFalse(controller.isActive)
@@ -31,7 +32,58 @@ final class AssertionSleepControllerTests: XCTestCase {
         try controller.stop()
     }
 
+    func testSwapWhileHeldChangesTypeWithoutDroppingAssertion() throws {
+        let controller = AssertionSleepController()
+        try controller.start()
+        XCTAssertEqual(sleepmasterAssertionTypes(), ["PreventUserIdleDisplaySleep"])
+
+        try controller.setAllowDisplaySleep(true)
+        XCTAssertTrue(controller.isActive)
+        XCTAssertTrue(pmsetAssertionsContainSleepmaster())
+        XCTAssertEqual(sleepmasterAssertionTypes(), ["PreventUserIdleSystemSleep"])
+
+        try controller.setAllowDisplaySleep(false)
+        XCTAssertTrue(controller.isActive)
+        XCTAssertTrue(pmsetAssertionsContainSleepmaster())
+        XCTAssertEqual(sleepmasterAssertionTypes(), ["PreventUserIdleDisplaySleep"])
+
+        try controller.stop()
+    }
+
+    func testSetTypeWhileInactiveIsStoredForNextStart() throws {
+        let controller = AssertionSleepController()
+        try controller.setAllowDisplaySleep(true)
+        XCTAssertFalse(controller.isActive)
+        XCTAssertFalse(pmsetAssertionsContainSleepmaster())
+
+        try controller.start()
+        XCTAssertEqual(sleepmasterAssertionTypes(), ["PreventUserIdleSystemSleep"])
+        try controller.stop()
+    }
+
     private func pmsetAssertionsContainSleepmaster() -> Bool {
+        !sleepmasterAssertionLines().isEmpty
+    }
+
+    private func sleepmasterAssertionTypes() -> [String] {
+        sleepmasterAssertionLines().compactMap { line in
+            if line.contains("PreventUserIdleDisplaySleep") {
+                return "PreventUserIdleDisplaySleep"
+            }
+            if line.contains("PreventUserIdleSystemSleep") {
+                return "PreventUserIdleSystemSleep"
+            }
+            return nil
+        }
+    }
+
+    private func sleepmasterAssertionLines() -> [String] {
+        pmsetAssertionOutput()
+            .components(separatedBy: .newlines)
+            .filter { $0.contains("\"Sleepmaster\"") }
+    }
+
+    private func pmsetAssertionOutput() -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
         process.arguments = ["-g", "assertions"]
@@ -44,10 +96,9 @@ final class AssertionSleepControllerTests: XCTestCase {
             process.waitUntilExit()
         } catch {
             XCTFail("Could not run pmset: \(error)")
-            return false
+            return ""
         }
 
-        let output = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        return output.contains("\"Sleepmaster\"")
+        return String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
     }
 }

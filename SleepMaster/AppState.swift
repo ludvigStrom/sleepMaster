@@ -27,6 +27,7 @@ final class AppState {
     static let durationDefaultsKey = "selectedDuration"
     static let plugOnlyDefaultsKey = "onlyWhilePluggedIn"
     static let batteryFloorDefaultsKey = "batteryFloorPercent"
+    static let displaySleepDefaultsKey = "allowDisplaySleep"
 
     var isActive = false {
         didSet {
@@ -63,6 +64,15 @@ final class AppState {
             guard oldValue != batteryFloorPercent, !isSyncing else { return }
             persistPreferences()
             applyHold()
+        }
+    }
+
+    var allowDisplaySleep: Bool {
+        didSet {
+            guard oldValue != allowDisplaySleep, !isSyncing else { return }
+            persistPreferences()
+            preventer.setAllowDisplaySleep(allowDisplaySleep)
+            syncFromPreventer()
         }
     }
 
@@ -221,9 +231,15 @@ final class AppState {
         } else {
             batteryFloorPercent = defaults.integer(forKey: Self.batteryFloorDefaultsKey)
         }
+        if defaults.object(forKey: Self.displaySleepDefaultsKey) == nil {
+            allowDisplaySleep = false
+        } else {
+            allowDisplaySleep = defaults.bool(forKey: Self.displaySleepDefaultsKey)
+        }
         syncFromPreventer()
         endDate = nil
         isActive = false
+        preventer.setAllowDisplaySleep(allowDisplaySleep)
         self.powerMonitor.addChangeHandler { [weak self] in
             self?.handlePowerChange()
         }
@@ -361,6 +377,7 @@ final class AppState {
         defaults.set(selectedDuration, forKey: Self.durationDefaultsKey)
         defaults.set(onlyWhilePluggedIn, forKey: Self.plugOnlyDefaultsKey)
         defaults.set(batteryFloorPercent, forKey: Self.batteryFloorDefaultsKey)
+        defaults.set(allowDisplaySleep, forKey: Self.displaySleepDefaultsKey)
     }
 
     private func startClock() {

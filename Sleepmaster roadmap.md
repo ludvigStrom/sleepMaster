@@ -71,8 +71,8 @@ Goal: the common setting that applies to both modes.
 
 Goal: keep the system awake while the screen is allowed to turn off.
 
-- [ ] **5.1 Pick the assertion type by setting.** Use `PreventUserIdleDisplaySleep` (screen stays on) by default and `PreventUserIdleSystemSleep` when the display may sleep. Test: with display sleep at 1 minute, the screen goes dark but a running download continues.
-- [ ] **5.2 Swap the assertion live when the toggle changes while on.** Take the new assertion before releasing the old one, so there is no gap. Test: flip it while on; `pmset -g assertions` never shows zero Sleepmaster assertions.
+- [x] **5.1 Pick the assertion type by setting.** Use `PreventUserIdleDisplaySleep` (screen stays on) by default and `PreventUserIdleSystemSleep` when the display may sleep. Test: with display sleep at 1 minute, the screen goes dark but a running download continues.
+- [x] **5.2 Swap the assertion live when the toggle changes while on.** Take the new assertion before releasing the old one, so there is no gap. Test: flip it while on; `pmset -g assertions` never shows zero Sleepmaster assertions.
 
 ## Phase 6 — Settings window
 

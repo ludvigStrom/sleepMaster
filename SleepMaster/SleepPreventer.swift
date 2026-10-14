@@ -110,6 +110,17 @@ final class SleepPreventer: ObservableObject {
         }
     }
 
+    func setAllowDisplaySleep(_ allow: Bool) {
+        errorMessage = nil
+        do {
+            try controller.setAllowDisplaySleep(allow)
+        } catch {
+            if !SleepControlError.isUserCanceled(error) {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     func setLidClosedEnabled(_ enabled: Bool) {
         let previous = lidClosedEnabled
         lidClosedEnabled = enabled

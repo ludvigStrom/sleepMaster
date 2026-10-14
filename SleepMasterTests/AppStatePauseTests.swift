@@ -130,6 +130,46 @@ final class AppStatePauseTests: XCTestCase {
         XCTAssertFalse(controller.isActive)
     }
 
+    func testFlipDisplaySleepWhileOnDoesNotRestart() {
+        let controller = FakeSleepController()
+        let power = FakePowerMonitor()
+        let state = makeState(controller: controller, power: power)
+
+        state.isActive = true
+        let starts = controller.startCallCount
+        let stops = controller.stopCallCount
+        let sets = controller.setAllowDisplaySleepCallCount
+
+        state.allowDisplaySleep = true
+
+        XCTAssertTrue(state.isActive)
+        XCTAssertTrue(state.allowDisplaySleep)
+        XCTAssertTrue(controller.allowDisplaySleep)
+        XCTAssertEqual(controller.setAllowDisplaySleepCallCount, sets + 1)
+        XCTAssertEqual(controller.startCallCount, starts)
+        XCTAssertEqual(controller.stopCallCount, stops)
+    }
+
+    func testFlipDisplaySleepWhilePausedDoesNotTakeAssertion() {
+        let controller = FakeSleepController()
+        let power = FakePowerMonitor()
+        let state = makeState(controller: controller, power: power)
+
+        state.isActive = true
+        power.isOnAC = false
+        power.notify()
+        XCTAssertTrue(state.isPaused)
+        XCTAssertFalse(controller.isActive)
+        let starts = controller.startCallCount
+
+        state.allowDisplaySleep = true
+
+        XCTAssertTrue(state.isPaused)
+        XCTAssertTrue(controller.allowDisplaySleep)
+        XCTAssertEqual(controller.startCallCount, starts)
+        XCTAssertFalse(controller.isActive)
+    }
+
     func testPersistsPlugOnlyAndFloor() {
         let suiteName = "SleepMasterTests.PausePersist.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -150,6 +190,7 @@ final class AppStatePauseTests: XCTestCase {
         )
         first.onlyWhilePluggedIn = false
         first.batteryFloorPercent = 15
+        first.allowDisplaySleep = true
 
         let secondPower = FakePowerMonitor()
         let second = AppState(
@@ -166,6 +207,7 @@ final class AppStatePauseTests: XCTestCase {
         )
         XCTAssertFalse(second.onlyWhilePluggedIn)
         XCTAssertEqual(second.batteryFloorPercent, 15)
+        XCTAssertTrue(second.allowDisplaySleep)
         XCTAssertFalse(second.isActive)
 
         defaults.removePersistentDomain(forName: suiteName)

@@ -6,6 +6,11 @@ protocol SleepController: AnyObject {
     var isActive: Bool { get }
     func start() throws
     func stop() throws
+    func setAllowDisplaySleep(_ allow: Bool) throws
+}
+
+extension SleepController {
+    func setAllowDisplaySleep(_ allow: Bool) throws {}
 }
 
 enum SleepControlError: LocalizedError {
