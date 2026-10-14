@@ -148,7 +148,7 @@ struct SettingsView: View {
             set: { newValue in
                 do {
                     try LoginItem.setEnabled(newValue)
-                    launchAtLogin = LoginItem.isEnabled
+                    launchAtLogin = newValue
                     loginItemError = nil
                 } catch {
                     launchAtLogin = LoginItem.isEnabled
@@ -362,6 +362,8 @@ struct SettingsView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .tint(SleepTheme.amber)
+                    .controlSize(.regular)
+                    .fixedSize()
                     .accessibilityLabel(title)
                     .accessibilityValue(isOn.wrappedValue ? "On" : "Off")
             }

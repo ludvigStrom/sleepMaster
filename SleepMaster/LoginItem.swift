@@ -11,7 +11,12 @@ enum LoginItemError: LocalizedError {
 
 enum LoginItem {
     static var isEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+        switch SMAppService.mainApp.status {
+        case .enabled, .requiresApproval:
+            return true
+        default:
+            return false
+        }
     }
 
     static func setEnabled(_ enabled: Bool) throws {
@@ -21,10 +26,13 @@ enum LoginItem {
             guard bundlePath.hasPrefix("/Applications/") else {
                 throw LoginItemError.notInApplications
             }
-            if service.status != .enabled {
+            switch service.status {
+            case .enabled, .requiresApproval:
+                return
+            default:
                 try service.register()
             }
-        } else if service.status == .enabled {
+        } else if service.status == .enabled || service.status == .requiresApproval {
             try service.unregister()
         }
     }

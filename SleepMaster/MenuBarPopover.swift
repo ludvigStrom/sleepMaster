@@ -362,11 +362,12 @@ struct MenuBarPopover: View {
             Text(title)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(selected ? Color.white : SleepTheme.muted)
-                .frame(maxWidth: .infinity)
-                .frame(height: 30)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .background(selected ? SleepTheme.segmentOn : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
+        .frame(height: 30)
         .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
@@ -383,6 +384,7 @@ struct MenuBarPopover: View {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(selected ? SleepTheme.amber : SleepTheme.border, lineWidth: 1)
                 )
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)

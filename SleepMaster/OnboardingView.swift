@@ -38,7 +38,7 @@ struct OnboardingView: View {
                 )
             }
 
-            Toggle(isOn: launchAtLoginBinding) {
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Launch at login")
                         .font(.system(size: 13, weight: .medium))
@@ -47,11 +47,16 @@ struct OnboardingView: View {
                         .font(.system(size: 11.5))
                         .foregroundStyle(SleepTheme.muted)
                 }
+                Spacer(minLength: 8)
+                Toggle("Launch at login", isOn: launchAtLoginBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .tint(SleepTheme.amber)
+                    .controlSize(.regular)
+                    .fixedSize()
+                    .accessibilityLabel("Launch at login")
+                    .accessibilityValue(launchAtLogin ? "On" : "Off")
             }
-            .toggleStyle(.switch)
-            .tint(SleepTheme.amber)
-            .accessibilityLabel("Launch at login")
-            .accessibilityValue(launchAtLogin ? "On" : "Off")
 
             if let loginItemError {
                 Text(loginItemError)
@@ -82,7 +87,7 @@ struct OnboardingView: View {
             set: { newValue in
                 do {
                     try LoginItem.setEnabled(newValue)
-                    launchAtLogin = LoginItem.isEnabled
+                    launchAtLogin = newValue
                     loginItemError = nil
                 } catch {
                     launchAtLogin = LoginItem.isEnabled
