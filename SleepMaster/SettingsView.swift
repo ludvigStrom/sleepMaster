@@ -196,9 +196,16 @@ struct SettingsView: View {
                         .frame(width: 22, height: 22)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(state.displayName(forBundleID: app.bundleID))
-                            .font(.system(size: 13))
-                            .foregroundStyle(SleepTheme.text)
+                        HStack(spacing: 8) {
+                            Text(state.displayName(forBundleID: app.bundleID))
+                                .font(.system(size: 13))
+                                .foregroundStyle(SleepTheme.text)
+                            if let snapshot = state.snapshot(forBundleID: app.bundleID) {
+                                Text("\(snapshot.liveStatusLabel) · \(snapshot.cpuLabel)")
+                                    .font(.system(size: 11.5))
+                                    .foregroundStyle(snapshot.isKeepingAwake ? SleepTheme.amber : SleepTheme.muted)
+                            }
+                        }
                         Picker(
                             "Keep awake mode for \(state.displayName(forBundleID: app.bundleID))",
                             selection: Binding(

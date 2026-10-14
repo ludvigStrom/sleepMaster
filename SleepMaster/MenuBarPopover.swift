@@ -61,6 +61,7 @@ struct MenuBarPopover: View {
         VStack(alignment: .leading, spacing: 16) {
             header
             powerCard
+            watchingLink
             modeSection
             appliesSection
             if state.helperNeedsApproval {
@@ -163,6 +164,31 @@ struct MenuBarPopover: View {
         }
         .padding(14)
         .background(SleepTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var watchingLink: some View {
+        Button {
+            openSettingsWindow()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "app.badge.checkmark")
+                    .font(.system(size: 13, weight: .medium))
+                Text(state.watchingLinkTitle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .font(.system(size: 12.5))
+            .foregroundStyle(SleepTheme.footer)
+            .padding(.horizontal, 10)
+            .frame(height: 34)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(SleepTheme.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(state.watchingLinkTitle)
     }
 
     private var modeSection: some View {

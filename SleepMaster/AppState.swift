@@ -42,6 +42,32 @@ struct WatchedApp: Codable, Equatable, Identifiable {
     var id: String { bundleID }
 }
 
+struct WatchedAppSnapshot: Equatable, Identifiable {
+    var bundleID: String
+    var name: String
+    var mode: WatchedAppMode
+    var isRunning: Bool
+    var isBusy: Bool
+    var cpuPercent: Double
+    var isKeepingAwake: Bool
+
+    var id: String { bundleID }
+
+    var cpuLabel: String {
+        "\(Int(cpuPercent.rounded()))%"
+    }
+
+    var liveStatusLabel: String {
+        if !isRunning { return "Not running" }
+        switch mode {
+        case .whileBusy:
+            return isBusy ? "Busy" : "Idle"
+        case .whileRunning:
+            return "Running"
+        }
+    }
+}
+
 enum TimerDurations {
     static let chips: [(label: String, seconds: TimeInterval)] = [
         ("15 min", 15 * 60),
@@ -314,7 +340,7 @@ final class AppState {
             return errorMessage
         }
         if !isActive {
-            return "Your Mac follows its normal energy settings."
+            return watchingOffSubtitle ?? "Your Mac follows its normal energy settings."
         }
         if isPaused {
             if isFloorOnlyPause {
@@ -326,8 +352,12 @@ final class AppState {
             switch activationReason {
             case .manual:
                 break
-            case .app(_, let name, let busy):
-                return busy ? "Awake while \(name) is busy" : "Awake while \(name) runs"
+            case .app(let bundleID, let name, let busy):
+                if busy {
+                    let percent = Int(usage.cpuPercent(for: bundleID).rounded())
+                    return "\(name) @ \(percent)% workload"
+                }
+                return "Awake while \(name) runs"
             case .power:
                 return "Awake while plugged in"
             case .schedule:
@@ -366,6 +396,56 @@ final class AppState {
 
     var needsOnboarding: Bool {
         !didCompleteOnboarding
+    }
+
+    var watchedSnapshots: [WatchedAppSnapshot] {
+        let running = workspace.runningBundleIDs
+        let keepingID: String? = {
+            guard isActive, case .app(let bundleID, _, _) = activationReason else { return nil }
+            return bundleID
+        }()
+        return watchedApps.map { app in
+            let isRunning = running.contains(app.bundleID)
+            let isBusy = busyTrackers[app.bundleID]?.isBusy == true
+            return WatchedAppSnapshot(
+                bundleID: app.bundleID,
+                name: workspace.displayName(for: app.bundleID),
+                mode: app.mode,
+                isRunning: isRunning,
+                isBusy: isBusy,
+                cpuPercent: usage.cpuPercent(for: app.bundleID),
+                isKeepingAwake: keepingID == app.bundleID
+            )
+        }
+    }
+
+    var watchingLinkTitle: String {
+        if watchedApps.isEmpty {
+            return "Keep awake for apps…"
+        }
+        return "Watching \(Self.joinedNames(watchedSnapshots.map(\.name)))"
+    }
+
+    private var watchingOffSubtitle: String? {
+        let snapshots = watchedSnapshots
+        guard !snapshots.isEmpty else { return nil }
+        let names = Self.joinedNames(snapshots.map(\.name))
+        if let firstBusy = snapshots.first(where: { $0.mode == .whileBusy }),
+           firstBusy.isRunning, !firstBusy.isBusy {
+            return "Watching \(names) · idle"
+        }
+        return "Watching \(names)"
+    }
+
+    static func joinedNames(_ names: [String]) -> String {
+        switch names.count {
+        case 0: return ""
+        case 1: return names[0]
+        case 2: return "\(names[0]) and \(names[1])"
+        default:
+            let head = names.dropLast().joined(separator: ", ")
+            return "\(head), and \(names[names.count - 1])"
+        }
     }
 
     var plugInSubtitle: String {
@@ -590,6 +670,10 @@ final class AppState {
 
     func displayName(forBundleID bundleID: String) -> String {
         workspace.displayName(for: bundleID)
+    }
+
+    func snapshot(forBundleID bundleID: String) -> WatchedAppSnapshot? {
+        watchedSnapshots.first { $0.bundleID == bundleID }
     }
 
     func completeOnboarding() {

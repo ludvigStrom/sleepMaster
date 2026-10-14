@@ -202,8 +202,10 @@ final class AutomationTests: XCTestCase {
         let state = makeState(workspace: workspace, usage: usage)
 
         state.addWatchedApp(bundleID: cursorID, mode: .whileBusy)
+        XCTAssertEqual(state.watchingLinkTitle, "Watching Cursor")
         workspace.launch(cursorID)
         XCTAssertFalse(state.isActive)
+        XCTAssertEqual(state.statusSubtitle, "Watching Cursor · idle")
 
         usage.percents[cursorID] = 40
         state.tick()
@@ -211,7 +213,7 @@ final class AutomationTests: XCTestCase {
         state.tick()
         XCTAssertTrue(state.isActive)
         XCTAssertEqual(state.activationReason, .app(bundleID: cursorID, name: "Cursor", busy: true))
-        XCTAssertEqual(state.statusSubtitle, "Awake while Cursor is busy")
+        XCTAssertEqual(state.statusSubtitle, "Cursor @ 40% workload")
 
         usage.percents[cursorID] = 2
         for _ in 0..<9 {
@@ -221,6 +223,7 @@ final class AutomationTests: XCTestCase {
         state.tick()
         XCTAssertFalse(state.isActive)
         XCTAssertNil(state.activationReason)
+        XCTAssertEqual(state.statusSubtitle, "Watching Cursor · idle")
     }
 
     func testWhileRunningStaysOnAtZeroCPU() {
@@ -270,7 +273,7 @@ final class AutomationTests: XCTestCase {
         state.tick()
         XCTAssertTrue(state.isActive)
         XCTAssertEqual(state.activationReason, .app(bundleID: cursorID, name: "Cursor", busy: true))
-        XCTAssertEqual(state.statusSubtitle, "Awake while Cursor is busy")
+        XCTAssertEqual(state.statusSubtitle, "Cursor @ 40% workload")
     }
 
     func testMigratesWatchedBundleIDsToWhileRunning() {
