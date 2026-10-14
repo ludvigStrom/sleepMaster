@@ -22,6 +22,12 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>SUFeedURL</key>
+	<string>$(SU_FEED_URL)</string>
+	<key>SUPublicEDKey</key>
+	<string>$(SU_PUBLIC_ED_KEY)</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>SleepMaster may ask for your password to keep the Mac awake with the lid closed, until you approve its helper in System Settings. It also uses this to reset an older install that left sleep disabled.</string>
 	<key>NSPrincipalClass</key>

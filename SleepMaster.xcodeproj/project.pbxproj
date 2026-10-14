@@ -59,6 +59,15 @@
 		A100000000000000000000FB /* NotificationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000095 /* NotificationClient.swift */; };
 		A100000000000000000000DC /* NotificationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000095 /* NotificationClient.swift */; };
 		A100000000000000000000DD /* NotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000096 /* NotificationTests.swift */; };
+		A100000000000000000000E3 /* WorkspaceWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000097 /* WorkspaceWatcher.swift */; };
+		A100000000000000000000E4 /* WorkspaceWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000097 /* WorkspaceWatcher.swift */; };
+		A100000000000000000000E5 /* ScheduleWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000098 /* ScheduleWindow.swift */; };
+		A100000000000000000000E6 /* ScheduleWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000098 /* ScheduleWindow.swift */; };
+		A100000000000000000000E7 /* AutomationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000099 /* AutomationTests.swift */; };
+		A100000000000000000000E8 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009A /* OnboardingView.swift */; };
+		A100000000000000000000E9 /* SparkleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009B /* SparkleUpdater.swift */; };
+		A100000000000000000000EA /* PolishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009C /* PolishTests.swift */; };
+		A100000000000000000000EB /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A100000000000000000000SQ /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -129,6 +138,12 @@
 		A10000000000000000000094 /* AppStateSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateSettingsTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000095 /* NotificationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationClient.swift; sourceTree = "<group>"; };
 		A10000000000000000000096 /* NotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000097 /* WorkspaceWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceWatcher.swift; sourceTree = "<group>"; };
+		A10000000000000000000098 /* ScheduleWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleWindow.swift; sourceTree = "<group>"; };
+		A10000000000000000000099 /* AutomationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationTests.swift; sourceTree = "<group>"; };
+		A1000000000000000000009A /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A1000000000000000000009B /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
+		A1000000000000000000009C /* PolishTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolishTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +151,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A100000000000000000000EB /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -176,8 +192,11 @@
 				A100000000000000000000F1 /* MenuBarPopover.swift */,
 				A100000000000000000000F2 /* SleepTheme.swift */,
 				A10000000000000000000092 /* SettingsView.swift */,
+				A1000000000000000000009A /* OnboardingView.swift */,
+				A1000000000000000000009B /* SparkleUpdater.swift */,
 				A10000000000000000000093 /* ToggleHotKey.swift */,
 				A10000000000000000000095 /* NotificationClient.swift */,
+				A10000000000000000000097 /* WorkspaceWatcher.swift */,
 				A10000000000000000000011 /* SleepPreventer.swift */,
 				A10000000000000000000043 /* SleepController.swift */,
 				A10000000000000000000044 /* PmsetSleepController.swift */,
@@ -224,6 +243,8 @@
 				A10000000000000000000091 /* AppStatePauseTests.swift */,
 				A10000000000000000000094 /* AppStateSettingsTests.swift */,
 				A10000000000000000000096 /* NotificationTests.swift */,
+				A10000000000000000000099 /* AutomationTests.swift */,
+				A1000000000000000000009C /* PolishTests.swift */,
 			);
 			path = SleepMasterTests;
 			sourceTree = "<group>";
@@ -248,6 +269,7 @@
 				A10000000000000000000081 /* CodeIdentity.swift */,
 				A10000000000000000000082 /* LidClosedSafety.swift */,
 				A10000000000000000000090 /* BatteryFloor.swift */,
+				A10000000000000000000098 /* ScheduleWindow.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -270,6 +292,9 @@
 				A100000000000000000000A7 /* PBXTargetDependency */,
 			);
 			name = SleepMaster;
+			packageProductDependencies = (
+				A100000000000000000000SQ /* Sparkle */,
+			);
 			productName = SleepMaster;
 			productReference = A10000000000000000000006 /* SleepMaster.app */;
 			productType = "com.apple.product-type.application";
@@ -337,6 +362,9 @@
 				Base,
 			);
 			mainGroup = A10000000000000000000007;
+			packageReferences = (
+				A100000000000000000000SP /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = A10000000000000000000009 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -376,8 +404,12 @@
 				A100000000000000000000F5 /* MenuBarPopover.swift in Sources */,
 				A100000000000000000000F6 /* SleepTheme.swift in Sources */,
 				A100000000000000000000F9 /* SettingsView.swift in Sources */,
+				A100000000000000000000E8 /* OnboardingView.swift in Sources */,
+				A100000000000000000000E9 /* SparkleUpdater.swift in Sources */,
 				A100000000000000000000FA /* ToggleHotKey.swift in Sources */,
 				A100000000000000000000FB /* NotificationClient.swift in Sources */,
+				A100000000000000000000E3 /* WorkspaceWatcher.swift in Sources */,
+				A100000000000000000000E5 /* ScheduleWindow.swift in Sources */,
 				A10000000000000000000017 /* SleepPreventer.swift in Sources */,
 				A10000000000000000000053 /* SleepController.swift in Sources */,
 				A10000000000000000000054 /* PmsetSleepController.swift in Sources */,
@@ -408,6 +440,10 @@
 				A100000000000000000000DB /* AppStateSettingsTests.swift in Sources */,
 				A100000000000000000000DC /* NotificationClient.swift in Sources */,
 				A100000000000000000000DD /* NotificationTests.swift in Sources */,
+				A100000000000000000000E7 /* AutomationTests.swift in Sources */,
+				A100000000000000000000EA /* PolishTests.swift in Sources */,
+				A100000000000000000000E4 /* WorkspaceWatcher.swift in Sources */,
+				A100000000000000000000E6 /* ScheduleWindow.swift in Sources */,
 				A100000000000000000000D9 /* BatteryFloor.swift in Sources */,
 				A100000000000000000000F7 /* AppState.swift in Sources */,
 				A10000000000000000000075 /* SleepPreventer.swift in Sources */,
@@ -740,6 +776,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A100000000000000000000SP /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A100000000000000000000SQ /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A100000000000000000000SP /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A10000000000000000000001 /* Project object */;
 }

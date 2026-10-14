@@ -7,6 +7,29 @@ enum SleepMode: String, CaseIterable {
     case timer
 }
 
+enum ActivationReason: Equatable {
+    case manual
+    case app(bundleID: String, name: String)
+    case power
+    case schedule
+
+    var kind: AutoReasonKind {
+        switch self {
+        case .manual: return .manual
+        case .app: return .app
+        case .power: return .power
+        case .schedule: return .schedule
+        }
+    }
+}
+
+enum AutoReasonKind: String, Hashable {
+    case manual
+    case app
+    case power
+    case schedule
+}
+
 enum TimerDurations {
     static let chips: [(label: String, seconds: TimeInterval)] = [
         ("15 min", 15 * 60),
@@ -34,12 +57,27 @@ final class AppState {
     static let defaultDurationDefaultsKey = "defaultDuration"
     static let warningLeadDefaultsKey = "timerWarningLead"
     static let notifyPauseDefaultsKey = "notifyOnBatteryPause"
+    static let autoOnPlugDefaultsKey = "autoOnWhenPluggedIn"
+    static let watchedAppsDefaultsKey = "watchedBundleIDs"
+    static let scheduleEnabledDefaultsKey = "scheduleEnabled"
+    static let scheduleDaysDefaultsKey = "scheduleDays"
+    static let scheduleStartDefaultsKey = "scheduleStartMinutes"
+    static let scheduleEndDefaultsKey = "scheduleEndMinutes"
+    static let onboardingDefaultsKey = "didCompleteOnboarding"
     static let defaultWarningLead: TimeInterval = 5 * 60
     static let defaultPauseNotifyDelay: TimeInterval = 2
 
     var isActive = false {
         didSet {
             guard oldValue != isActive, !isSyncing else { return }
+            if !isEvaluatingAutomation {
+                if isActive {
+                    activationReason = .manual
+                } else {
+                    latchCurrentAutoReasons()
+                    activationReason = nil
+                }
+            }
             if isActive {
                 if mode == .timer, endDate == nil {
                     endDate = now().addingTimeInterval(selectedDuration)
@@ -152,6 +190,61 @@ final class AppState {
         }
     }
 
+    var autoOnWhenPluggedIn: Bool {
+        didSet {
+            guard oldValue != autoOnWhenPluggedIn, !isSyncing else { return }
+            persistPreferences()
+            applyAutomation()
+        }
+    }
+
+    var watchedBundleIDs: [String] {
+        didSet {
+            guard oldValue != watchedBundleIDs, !isSyncing else { return }
+            persistPreferences()
+            applyAutomation()
+        }
+    }
+
+    var scheduleEnabled: Bool {
+        didSet {
+            guard oldValue != scheduleEnabled, !isSyncing else { return }
+            persistPreferences()
+            applyAutomation()
+        }
+    }
+
+    var scheduleDays: Set<Int> {
+        didSet {
+            guard oldValue != scheduleDays, !isSyncing else { return }
+            persistPreferences()
+            applyAutomation()
+        }
+    }
+
+    var scheduleStartMinutes: Int {
+        didSet {
+            guard oldValue != scheduleStartMinutes, !isSyncing else { return }
+            persistPreferences()
+            applyAutomation()
+        }
+    }
+
+    var scheduleEndMinutes: Int {
+        didSet {
+            guard oldValue != scheduleEndMinutes, !isSyncing else { return }
+            persistPreferences()
+            applyAutomation()
+        }
+    }
+
+    var didCompleteOnboarding: Bool {
+        didSet {
+            guard oldValue != didCompleteOnboarding, !isSyncing else { return }
+            persistPreferences()
+        }
+    }
+
     private(set) var endDate: Date?
     private(set) var clockNow: Date
     private(set) var isOnAC: Bool
@@ -159,6 +252,7 @@ final class AppState {
     private(set) var helperNeedsApproval = false
     private(set) var errorMessage: String?
     private(set) var isBusy = false
+    private(set) var activationReason: ActivationReason?
 
     var now: () -> Date
 
@@ -192,10 +286,50 @@ final class AppState {
             }
             return "Resumes when the power adapter is connected."
         }
-        if mode == .timer, let endDate {
-            return "Allows sleep at \(Self.formatClock(endDate))"
+        if let activationReason {
+            switch activationReason {
+            case .manual:
+                break
+            case .app(_, let name):
+                return "Awake while \(name) runs"
+            case .power:
+                return "Awake while plugged in"
+            case .schedule:
+                return "Awake on schedule"
+            }
         }
-        return "Until you turn it off"
+        if mode == .timer, let endDate {
+            return withDisplaySleepSuffix("Allows sleep at \(Self.formatClock(endDate))")
+        }
+        return withDisplaySleepSuffix("Until you turn it off")
+    }
+
+    var powerAccessibilityValue: String {
+        if isPaused { return "Paused" }
+        return isActive ? "On" : "Off"
+    }
+
+    var scheduleSummary: String {
+        let window = "\(Self.formatMinutes(scheduleStartMinutes))–\(Self.formatMinutes(scheduleEndMinutes))"
+        if scheduleDays == Set(2...6) {
+            return "Weekdays \(window)"
+        }
+        if scheduleDays == Set(1...7) {
+            return "Every day \(window)"
+        }
+        if scheduleDays.isEmpty {
+            return "No days selected · \(window)"
+        }
+        let symbols = calendar.shortWeekdaySymbols
+        let names = (1...7).compactMap { day -> String? in
+            guard scheduleDays.contains(day), symbols.indices.contains(day - 1) else { return nil }
+            return symbols[day - 1]
+        }
+        return "\(names.joined(separator: ", ")) \(window)"
+    }
+
+    var needsOnboarding: Bool {
+        !didCompleteOnboarding
     }
 
     var plugInSubtitle: String {
@@ -233,10 +367,14 @@ final class AppState {
     private let preventer: SleepPreventer
     private let powerMonitor: PowerMonitoring
     private let notifications: NotificationPosting
+    private let workspace: WorkspaceWatching
     private let defaults: UserDefaults
+    var calendar: Calendar
     private let pauseNotifyDelay: TimeInterval
     private let runAfter: (TimeInterval, @escaping () -> Void) -> () -> Void
     private var isSyncing = false
+    private var isEvaluatingAutomation = false
+    private var latchedReasons: Set<AutoReasonKind> = []
     private var wasPaused = false
     private var cancelPauseNotify: (() -> Void)?
     private let clock = ClockRuntime()
@@ -250,7 +388,8 @@ final class AppState {
                 powerMonitor: power
             ),
             powerMonitor: power,
-            notifications: UserNotificationClient()
+            notifications: UserNotificationClient(),
+            workspace: WorkspaceWatcher()
         )
     }
 
@@ -262,8 +401,10 @@ final class AppState {
         preventer: SleepPreventer,
         powerMonitor: PowerMonitoring? = nil,
         notifications: NotificationPosting? = nil,
+        workspace: WorkspaceWatching? = nil,
         defaults: UserDefaults = .standard,
         now: @escaping () -> Date = { Date() },
+        calendar: Calendar = .current,
         startsClock: Bool = true,
         pauseNotifyDelay: TimeInterval = AppState.defaultPauseNotifyDelay,
         runAfter: ((TimeInterval, @escaping () -> Void) -> () -> Void)? = nil
@@ -271,7 +412,9 @@ final class AppState {
         self.preventer = preventer
         self.powerMonitor = powerMonitor ?? preventer.powerMonitor
         self.notifications = notifications ?? IdleNotificationClient()
+        self.workspace = workspace ?? IdleWorkspace()
         self.defaults = defaults
+        self.calendar = calendar
         self.pauseNotifyDelay = pauseNotifyDelay
         self.runAfter = runAfter ?? { delay, work in
             let item = DispatchWorkItem(block: work)
@@ -335,6 +478,25 @@ final class AppState {
         } else {
             notifyOnBatteryPause = defaults.bool(forKey: Self.notifyPauseDefaultsKey)
         }
+        autoOnWhenPluggedIn = defaults.bool(forKey: Self.autoOnPlugDefaultsKey)
+        watchedBundleIDs = defaults.stringArray(forKey: Self.watchedAppsDefaultsKey) ?? []
+        scheduleEnabled = defaults.bool(forKey: Self.scheduleEnabledDefaultsKey)
+        if let days = defaults.array(forKey: Self.scheduleDaysDefaultsKey) as? [Int] {
+            scheduleDays = Set(days)
+        } else {
+            scheduleDays = []
+        }
+        if defaults.object(forKey: Self.scheduleStartDefaultsKey) != nil {
+            scheduleStartMinutes = defaults.integer(forKey: Self.scheduleStartDefaultsKey)
+        } else {
+            scheduleStartMinutes = 9 * 60
+        }
+        if defaults.object(forKey: Self.scheduleEndDefaultsKey) != nil {
+            scheduleEndMinutes = defaults.integer(forKey: Self.scheduleEndDefaultsKey)
+        } else {
+            scheduleEndMinutes = 17 * 60
+        }
+        didCompleteOnboarding = defaults.bool(forKey: Self.onboardingDefaultsKey)
         syncFromPreventer()
         endDate = nil
         isActive = false
@@ -342,9 +504,40 @@ final class AppState {
         self.powerMonitor.addChangeHandler { [weak self] in
             self?.handlePowerChange()
         }
+        self.workspace.addChangeHandler { [weak self] in
+            self?.applyAutomation()
+        }
+        self.workspace.start()
         if startsClock {
             startClock()
         }
+    }
+
+    func addWatchedApp(bundleID: String) {
+        guard !bundleID.isEmpty, !watchedBundleIDs.contains(bundleID) else { return }
+        watchedBundleIDs.append(bundleID)
+    }
+
+    func removeWatchedApp(bundleID: String) {
+        watchedBundleIDs.removeAll { $0 == bundleID }
+    }
+
+    func displayName(forBundleID bundleID: String) -> String {
+        workspace.displayName(for: bundleID)
+    }
+
+    func completeOnboarding() {
+        didCompleteOnboarding = true
+    }
+
+    func isScheduleActive(now date: Date? = nil) -> Bool {
+        ScheduleWindow.isActive(
+            now: date ?? now(),
+            days: scheduleDays,
+            startMinutes: scheduleStartMinutes,
+            endMinutes: scheduleEndMinutes,
+            calendar: calendar
+        )
     }
 
     func toggle() {
@@ -372,6 +565,7 @@ final class AppState {
         mode = .timer
         endDate = now().addingTimeInterval(seconds)
         clockNow = now()
+        activationReason = .manual
         if !isActive {
             isActive = true
         } else {
@@ -398,6 +592,7 @@ final class AppState {
         mode = .timer
         endDate = date
         clockNow = current
+        activationReason = .manual
         if !isActive {
             isActive = true
         } else {
@@ -411,6 +606,7 @@ final class AppState {
             extend(by: 30 * 60)
         case NotificationAction.keepAwake:
             mode = .indefinitely
+            activationReason = .manual
         case NotificationAction.letSleep:
             isActive = false
         default:
@@ -420,8 +616,10 @@ final class AppState {
 
     func tick() {
         clockNow = now()
-        guard isActive, let endDate, clockNow >= endDate else { return }
-        isActive = false
+        if isActive, let endDate, clockNow >= endDate {
+            isActive = false
+        }
+        applyAutomation()
     }
 
     static func formatHMS(_ interval: TimeInterval) -> String {
@@ -468,6 +666,75 @@ final class AppState {
         syncPowerSnapshot()
         applyHold()
         syncPauseNotification()
+        applyAutomation()
+    }
+
+    private func latchCurrentAutoReasons() {
+        latchedReasons = Set(currentTrueReasons().map(\.kind))
+    }
+
+    private func currentTrueReasons() -> [ActivationReason] {
+        var reasons: [ActivationReason] = []
+        if let app = firstRunningWatchedApp() {
+            reasons.append(.app(bundleID: app.id, name: app.name))
+        }
+        if scheduleEnabled, isScheduleActive() {
+            reasons.append(.schedule)
+        }
+        if autoOnWhenPluggedIn && isOnAC {
+            reasons.append(.power)
+        }
+        return reasons
+    }
+
+    private func firstRunningWatchedApp() -> (id: String, name: String)? {
+        let running = workspace.runningBundleIDs
+        guard let id = watchedBundleIDs.first(where: { running.contains($0) }) else { return nil }
+        return (id, workspace.displayName(for: id))
+    }
+
+    private func applyAutomation() {
+        let trueReasons = currentTrueReasons()
+        latchedReasons = latchedReasons.intersection(Set(trueReasons.map(\.kind)))
+        let effective = trueReasons.filter { !latchedReasons.contains($0.kind) }
+
+        if isActive, activationReason == .manual {
+            return
+        }
+
+        if let preferred = effective.first {
+            if !isActive {
+                startAutomatically(preferred)
+            } else if activationReason != .manual {
+                activationReason = preferred
+            }
+            return
+        }
+
+        if isActive, let activationReason, activationReason != .manual {
+            stopAutomatically()
+        }
+    }
+
+    private func startAutomatically(_ reason: ActivationReason) {
+        isEvaluatingAutomation = true
+        activationReason = reason
+        mode = .indefinitely
+        isActive = true
+        isEvaluatingAutomation = false
+        applyHold()
+        syncTimerNotifications()
+        syncPauseNotification()
+    }
+
+    private func stopAutomatically() {
+        isEvaluatingAutomation = true
+        activationReason = nil
+        isActive = false
+        isEvaluatingAutomation = false
+        applyHold()
+        syncTimerNotifications()
+        syncPauseNotification()
     }
 
     private func syncTimerNotifications() {
@@ -478,7 +745,7 @@ final class AppState {
         notifications.requestPermissionIfNeeded()
         let fire = endDate.addingTimeInterval(-timerWarningLead)
         if fire > now() {
-            notifications.scheduleTimerWarning(at: fire)
+            notifications.scheduleTimerWarning(at: fire, minutesBeforeEnd: Int(timerWarningLead / 60))
         } else {
             notifications.cancelTimerWarning()
         }
@@ -535,6 +802,24 @@ final class AppState {
         defaults.set(defaultDuration, forKey: Self.defaultDurationDefaultsKey)
         defaults.set(timerWarningLead, forKey: Self.warningLeadDefaultsKey)
         defaults.set(notifyOnBatteryPause, forKey: Self.notifyPauseDefaultsKey)
+        defaults.set(autoOnWhenPluggedIn, forKey: Self.autoOnPlugDefaultsKey)
+        defaults.set(watchedBundleIDs, forKey: Self.watchedAppsDefaultsKey)
+        defaults.set(scheduleEnabled, forKey: Self.scheduleEnabledDefaultsKey)
+        defaults.set(Array(scheduleDays), forKey: Self.scheduleDaysDefaultsKey)
+        defaults.set(scheduleStartMinutes, forKey: Self.scheduleStartDefaultsKey)
+        defaults.set(scheduleEndMinutes, forKey: Self.scheduleEndDefaultsKey)
+        defaults.set(didCompleteOnboarding, forKey: Self.onboardingDefaultsKey)
+    }
+
+    private func withDisplaySleepSuffix(_ text: String) -> String {
+        if allowDisplaySleep {
+            return "\(text) · display may sleep"
+        }
+        return text
+    }
+
+    static func formatMinutes(_ minutes: Int) -> String {
+        String(format: "%02d:%02d", minutes / 60, minutes % 60)
     }
 
     private func startClock() {

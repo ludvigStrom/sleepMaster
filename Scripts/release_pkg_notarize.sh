@@ -291,15 +291,53 @@ lipo -info "${APP_SRC}/Contents/MacOS/${APP_NAME}" || true
 echo "==> Preparing release entitlements"
 write_release_entitlements
 
-echo "==> Re-signing with Developer ID + hardened runtime"
+echo "==> Re-signing with Developer ID + hardened runtime (inside-out)"
 xattr -cr "${APP_SRC}"
+
+sign_nested () {
+  local path="$1"
+  if [[ -e "${path}" ]]; then
+    echo "    codesign ${path#"${APP_SRC}/"}"
+    codesign --force --sign "${APP_SIGN_IDENTITY_HASH}" --timestamp --options runtime "${path}"
+  fi
+}
+
+SPARKLE_FW="${APP_SRC}/Contents/Frameworks/Sparkle.framework"
+if [[ -d "${SPARKLE_FW}" ]]; then
+  sign_nested "${SPARKLE_FW}/Versions/B/XPCServices/Installer.xpc"
+  sign_nested "${SPARKLE_FW}/Versions/B/XPCServices/Downloader.xpc"
+  sign_nested "${SPARKLE_FW}/Versions/B/Updater.app"
+  sign_nested "${SPARKLE_FW}/Versions/B/Autoupdate"
+  sign_nested "${SPARKLE_FW}"
+fi
+
+HELPER_BIN="${APP_SRC}/Contents/Library/LaunchDaemons/SleepMasterHelper"
+HELPER_ENTS="${PROJECT_DIR}/SleepMasterHelper/SleepMasterHelper.entitlements"
+if [[ -f "${HELPER_BIN}" ]]; then
+  codesign --force --sign "${APP_SIGN_IDENTITY_HASH}" --timestamp --options runtime \
+    --entitlements "${HELPER_ENTS}" "${HELPER_BIN}"
+  codesign --verify --strict --verbose=2 "${HELPER_BIN}"
+else
+  echo "WARN: nested helper not found at ${HELPER_BIN}" >&2
+fi
 codesign --force --sign "${APP_SIGN_IDENTITY_HASH}" --timestamp --options runtime \
   --entitlements "${ENTITLEMENTS_TMP}" "${APP_SRC}"
 codesign --verify --deep --strict --verbose=2 "${APP_SRC}"
 
+SIGNED_ZIP="${DIST_DIR}/${PKG_FILE_BASENAME}-${VERSION}.zip"
+echo "==> Zipping signed app for Sparkle: ${SIGNED_ZIP}"
+ditto -c -k --keepParent "${APP_SRC}" "${SIGNED_ZIP}"
+echo "    SHA256: $(pkg_sha256 "${SIGNED_ZIP}")"
+
+if command -v generate_appcast >/dev/null 2>&1; then
+  echo "==> generate_appcast found — writing ${DIST_DIR}/appcast.xml"
+  generate_appcast "${DIST_DIR}" || echo "WARN: generate_appcast failed" >&2
+else
+  echo "==> generate_appcast not on PATH — skip appcast. Install Sparkle’s generate_appcast or sign ${SIGNED_ZIP} with sign_update."
+fi
+
 echo "==> Staging installer payload"
 ditto "${APP_SRC}" "${PAYLOAD_ROOT}/Applications/${APP_NAME}.app"
-xattr -cr "${PAYLOAD_ROOT}/Applications/${APP_NAME}.app"
 
 chmod +x "${SCRIPTS_DIR}/postinstall"
 

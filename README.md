@@ -14,7 +14,9 @@ After a `/Applications` install it starts at login.
 # Debug
 open SleepMaster.xcodeproj
 
-# Signed, notarized .pkg
+# Signed, notarized .pkg + Sparkle zip
 cp Scripts/release.env.example Scripts/release.env   # set TEAM_ID + NOTARY_PROFILE
 bash Scripts/release_pkg_notarize.sh 1.0.0
 ```
+
+See [build runbook.md](build%20runbook.md) for Gatekeeper (`spctl -a -v`), Sparkle, and the regression checklist.

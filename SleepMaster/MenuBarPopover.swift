@@ -5,21 +5,37 @@ struct MenuBarIcon: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: state.isActive ? "eye.fill" : "moon.fill")
+            menuSymbol
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(menuIconColor)
             if let label = state.menuBarLabel {
                 Text(label)
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
-                    .foregroundStyle(state.isPaused ? SleepTheme.muted : SleepTheme.amber)
+                    .foregroundStyle(state.isPaused ? SleepTheme.menuBarMuted : SleepTheme.amber)
             }
         }
         .accessibilityLabel(menuAccessibilityLabel)
+        .accessibilityValue(state.powerAccessibilityValue)
+    }
+
+    @ViewBuilder
+    private var menuSymbol: some View {
+        if state.isPaused {
+            ZStack {
+                Image(systemName: "eye")
+                Image(systemName: "pause.fill")
+                    .font(.system(size: 6, weight: .bold))
+            }
+        } else if state.isActive {
+            Image(systemName: "eye")
+        } else {
+            Image(systemName: "moon")
+        }
     }
 
     private var menuIconColor: Color {
         if state.isPaused {
-            return SleepTheme.muted
+            return SleepTheme.menuBarMuted
         }
         return state.isActive ? SleepTheme.amber : Color.primary
     }
@@ -46,9 +62,7 @@ struct MenuBarPopover: View {
             header
             powerCard
             modeSection
-            lidClosedRow
-            plugOnlyRow
-            displaySleepRow
+            appliesSection
             if state.helperNeedsApproval {
                 Button("Approve in System Settings") {
                     state.openHelperApproval()
@@ -56,6 +70,7 @@ struct MenuBarPopover: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(SleepTheme.amber)
                 .font(.system(size: 13, weight: .medium))
+                .accessibilityLabel("Approve in System Settings")
             }
             SleepTheme.divider
                 .frame(height: 1)
@@ -64,9 +79,11 @@ struct MenuBarPopover: View {
         .padding(16)
         .frame(width: 340)
         .background(SleepTheme.popoverBackground)
-        .preferredColorScheme(.dark)
         .onAppear {
             state.refresh()
+        }
+        .onChange(of: state.statusTitle) { _, newValue in
+            AccessibilityNotification.Announcement(newValue).post()
         }
     }
 
@@ -76,7 +93,7 @@ struct MenuBarPopover: View {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(SleepTheme.iconWell)
                     .frame(width: 28, height: 28)
-                Image(systemName: "moon.fill")
+                Image(systemName: "moon")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(SleepTheme.amber)
             }
@@ -95,6 +112,7 @@ struct MenuBarPopover: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")
+            .keyboardShortcut(",", modifiers: .command)
         }
     }
 
@@ -117,7 +135,9 @@ struct MenuBarPopover: View {
             .buttonStyle(.plain)
             .disabled(state.isBusy)
             .accessibilityLabel("Keep Mac awake")
+            .accessibilityValue(state.powerAccessibilityValue)
             .accessibilityAddTraits(state.isActive ? [.isSelected] : [])
+            .keyboardShortcut("s", modifiers: [.option, .command])
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(state.statusTitle)
@@ -129,12 +149,15 @@ struct MenuBarPopover: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if state.showExtendButtons {
                     HStack(spacing: 6) {
-                        extendButton(" +30 min ") { state.extend(by: 30 * 60) }
-                        extendButton(" +1 hour ") { state.extend(by: 60 * 60) }
+                        extendButton("+30 min") { state.extend(by: 30 * 60) }
+                        extendButton("+1 hour") { state.extend(by: 60 * 60) }
                     }
                     .padding(.top, 6)
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(state.statusTitle). \(state.statusSubtitle)")
+            .accessibilityAddTraits(.updatesFrequently)
             Spacer(minLength: 0)
         }
         .padding(14)
@@ -143,9 +166,10 @@ struct MenuBarPopover: View {
 
     private var modeSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("MODE")
+            Text("Mode")
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(0.6)
+                .textCase(.uppercase)
                 .foregroundStyle(SleepTheme.section)
 
             HStack(spacing: 4) {
@@ -182,7 +206,7 @@ struct MenuBarPopover: View {
                             .font(.system(size: 11, weight: .semibold))
                     }
                     .font(.system(size: 13))
-                    .foregroundStyle(Color(red: 0.839, green: 0.843, blue: 0.863))
+                    .foregroundStyle(SleepTheme.footer)
                     .padding(.horizontal, 10)
                     .frame(height: 34)
                     .background(
@@ -191,6 +215,7 @@ struct MenuBarPopover: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Until a specific time")
 
                 if showTimePicker {
                     DatePicker(
@@ -200,6 +225,7 @@ struct MenuBarPopover: View {
                     )
                     .labelsHidden()
                     .datePickerStyle(.field)
+                    .accessibilityLabel("Until time")
                     .onChange(of: specificTime) { _, newValue in
                         let components = Calendar.current.dateComponents([.hour, .minute], from: newValue)
                         state.setUntil(hour: components.hour ?? 0, minute: components.minute ?? 0)
@@ -214,94 +240,32 @@ struct MenuBarPopover: View {
         }
     }
 
-    private var lidClosedRow: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(SleepTheme.iconWell)
-                    .frame(width: 28, height: 28)
-                Image(systemName: "laptopcomputer")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(state.lidClosedEnabled ? SleepTheme.amber : SleepTheme.muted)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Stay awake with the lid closed")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SleepTheme.text)
-                Text("Closing the lid keeps the Mac awake")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(SleepTheme.muted)
-            }
-            Spacer(minLength: 8)
-            Toggle("Stay awake with the lid closed", isOn: $state.lidClosedEnabled)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .tint(SleepTheme.amber)
-                .disabled(state.isBusy)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(SleepTheme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
+    private var appliesSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Applies to both modes")
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(SleepTheme.section)
+                .padding(.bottom, 6)
 
-    private var plugOnlyRow: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(SleepTheme.iconWell)
-                    .frame(width: 28, height: 28)
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(state.onlyWhilePluggedIn ? SleepTheme.amber : SleepTheme.muted)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Only while plugged in")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SleepTheme.text)
-                Text(state.plugInSubtitle)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(SleepTheme.muted)
-            }
-            Spacer(minLength: 8)
-            Toggle("Only while plugged in", isOn: $state.onlyWhilePluggedIn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .tint(SleepTheme.amber)
-                .disabled(state.isBusy)
+            settingRow(
+                title: "Only while plugged in",
+                subtitle: state.plugInSubtitle,
+                systemImage: "powerplug",
+                iconTint: state.onlyWhilePluggedIn ? SleepTheme.amber : SleepTheme.muted,
+                isOn: $state.onlyWhilePluggedIn,
+                corners: .top
+            )
+            settingRow(
+                title: "Let the display sleep",
+                subtitle: "Screen turns off, apps keep running",
+                systemImage: "sun.min",
+                iconTint: state.allowDisplaySleep ? SleepTheme.amber : SleepTheme.muted,
+                isOn: $state.allowDisplaySleep,
+                corners: .bottom
+            )
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(SleepTheme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-
-    private var displaySleepRow: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(SleepTheme.iconWell)
-                    .frame(width: 28, height: 28)
-                Image(systemName: "sun.min")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(state.allowDisplaySleep ? SleepTheme.amber : SleepTheme.muted)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Let the display sleep")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SleepTheme.text)
-                Text("The screen can turn off; the Mac stays awake")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(SleepTheme.muted)
-            }
-            Spacer(minLength: 8)
-            Toggle("Let the display sleep", isOn: $state.allowDisplaySleep)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .tint(SleepTheme.amber)
-                .disabled(state.isBusy)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(SleepTheme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var powerIconColor: Color {
@@ -319,6 +283,7 @@ struct MenuBarPopover: View {
             .buttonStyle(.plain)
             .foregroundStyle(SleepTheme.footer)
             .font(.system(size: 13))
+            .accessibilityLabel("Settings")
 
             Spacer()
 
@@ -335,6 +300,7 @@ struct MenuBarPopover: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut("q")
+            .accessibilityLabel("Quit Sleepmaster")
         }
     }
 
@@ -342,6 +308,53 @@ struct MenuBarPopover: View {
         NSApp.setActivationPolicy(.regular)
         openSettings()
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private enum CardCorners {
+        case top
+        case bottom
+    }
+
+    private func settingRow(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        iconTint: Color,
+        isOn: Binding<Bool>,
+        corners: CardCorners
+    ) -> some View {
+        let radii = corners == .top
+            ? RectangleCornerRadii(topLeading: 10, bottomLeading: 2, bottomTrailing: 2, topTrailing: 10)
+            : RectangleCornerRadii(topLeading: 2, bottomLeading: 10, bottomTrailing: 10, topTrailing: 2)
+        return HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(SleepTheme.iconWell)
+                    .frame(width: 28, height: 28)
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(iconTint)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SleepTheme.text)
+                Text(subtitle)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(SleepTheme.muted)
+            }
+            Spacer(minLength: 8)
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(SleepTheme.amber)
+                .disabled(state.isBusy)
+                .accessibilityLabel(title)
+                .accessibilityValue(isOn.wrappedValue ? "On" : "Off")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(SleepTheme.card, in: UnevenRoundedRectangle(cornerRadii: radii, style: .continuous))
     }
 
     private func modeButton(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
@@ -354,6 +367,7 @@ struct MenuBarPopover: View {
                 .background(selected ? SleepTheme.segmentOn : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
@@ -372,6 +386,7 @@ struct MenuBarPopover: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
@@ -384,5 +399,6 @@ struct MenuBarPopover: View {
             .background(SleepTheme.iconWell, in: Capsule())
             .overlay(Capsule().stroke(SleepTheme.powerBorder, lineWidth: 1))
             .buttonStyle(.plain)
+            .accessibilityLabel(title)
     }
 }

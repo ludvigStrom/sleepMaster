@@ -13,7 +13,7 @@ enum NotificationAction {
 @MainActor
 protocol NotificationPosting: AnyObject {
     func requestPermissionIfNeeded()
-    func scheduleTimerWarning(at date: Date)
+    func scheduleTimerWarning(at date: Date, minutesBeforeEnd: Int)
     func cancelTimerWarning()
     func notifyPausedOnBattery()
 }
@@ -21,7 +21,7 @@ protocol NotificationPosting: AnyObject {
 @MainActor
 final class IdleNotificationClient: NotificationPosting {
     func requestPermissionIfNeeded() {}
-    func scheduleTimerWarning(at date: Date) {}
+    func scheduleTimerWarning(at date: Date, minutesBeforeEnd: Int) {}
     func cancelTimerWarning() {}
     func notifyPausedOnBattery() {}
 }
@@ -62,10 +62,11 @@ final class UserNotificationClient: NotificationPosting {
         center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
-    func scheduleTimerWarning(at date: Date) {
+    func scheduleTimerWarning(at date: Date, minutesBeforeEnd: Int) {
         let content = UNMutableNotificationContent()
         content.title = "Sleepmaster"
-        content.body = "Timer ending soon. The Mac will be allowed to sleep."
+        let minutes = max(1, minutesBeforeEnd)
+        content.body = "Your Mac can sleep in \(minutes) minutes."
         content.categoryIdentifier = NotificationAction.timerCategory
         content.sound = .default
 

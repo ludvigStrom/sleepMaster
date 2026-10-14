@@ -1,2 +1,6 @@
 // Optional local team. Copy Signing.local.xcconfig.example → Signing.local.xcconfig
 #include? "Signing.local.xcconfig"
+
+// Sparkle. Leave empty in Debug so the updater does not hit production.
+SU_FEED_URL =
+SU_PUBLIC_ED_KEY =

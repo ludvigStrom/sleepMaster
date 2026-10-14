@@ -98,16 +98,16 @@ Goal: no surprise sleep in the middle of a download or render.
 
 Goal: Sleepmaster turns itself on when needed. Automatic activations are tracked separately, so a manual off always wins until the trigger fires again.
 
-- [ ] **8.1 Add an `activationReason` field (manual, app, power, schedule).** Show it in the status line, e.g. "Awake while Xcode runs". Test: unit test that a manual off clears automatic activations.
-- [ ] **8.2 Add Turn on automatically when plugged in.** This starts Indefinitely mode on AC and stops it on battery. Test: plug in and the icon turns amber; unplug and it turns off.
-- [ ] **8.3 Add an app list with an Add app… picker.** Store bundle IDs and watch `NSWorkspace` launch and terminate notifications. Test: add TextEdit; opening it turns Sleepmaster on, quitting it turns it off.
-- [ ] **8.4 Add a schedule (days + from/to time).** Re-evaluate on a timer and on wake. Test: set a window starting 2 minutes from now; it turns on and later off on time.
+- [x] **8.1 Add an `activationReason` field (manual, app, power, schedule).** Show it in the status line, e.g. "Awake while Xcode runs". Test: unit test that a manual off clears automatic activations.
+- [x] **8.2 Add Turn on automatically when plugged in.** This starts Indefinitely mode on AC and stops it on battery. Test: plug in and the icon turns amber; unplug and it turns off.
+- [x] **8.3 Add an app list with an Add app… picker.** Store bundle IDs and watch `NSWorkspace` launch and terminate notifications. Test: add TextEdit; opening it turns Sleepmaster on, quitting it turns it off.
+- [x] **8.4 Add a schedule (days + from/to time).** Re-evaluate on a timer and on wake. Test: set a window starting 2 minutes from now; it turns on and later off on time.
 
 ## Phase 9 — Polish and release
 
-- [ ] **9.1 Accessibility pass.** Every control has a VoiceOver label, the status is announced on change, and everything works by keyboard. Test: full flow with VoiceOver only.
-- [ ] **9.2 Light mode and Reduce Transparency.** Test: the popover reads well in both appearances.
-- [ ] **9.3 First-run onboarding.** One screen explains the modes and offers launch at login. Test: shows once on a clean user account.
-- [ ] **9.4 Sign with Developer ID, notarize and staple.** Test: `spctl -a -v Sleepmaster.app` reports accepted on a second Mac.
-- [ ] **9.5 Auto-updates with Sparkle.** Test: an older build finds and installs the newer one.
+- [x] **9.1 Accessibility pass.** Every control has a VoiceOver label, the status is announced on change, and everything works by keyboard. Test: full flow with VoiceOver only.
+- [x] **9.2 Light mode and Reduce Transparency.** Test: the popover reads well in both appearances.
+- [x] **9.3 First-run onboarding.** One screen explains the modes and offers launch at login. Test: shows once on a clean user account.
+- [x] **9.4 Sign with Developer ID, notarize and staple.** Test: `spctl -a -v Sleepmaster.app` reports accepted on a second Mac.
+- [x] **9.5 Auto-updates with Sparkle.** Test: an older build finds and installs the newer one.
 - [ ] **9.6 Regression checklist.** Re-run every Test line above on the release build and tick it off.

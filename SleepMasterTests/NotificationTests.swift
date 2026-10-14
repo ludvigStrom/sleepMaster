@@ -14,7 +14,7 @@ final class RecordingNotificationClient: NotificationPosting {
         permissionRequestCount += 1
     }
 
-    func scheduleTimerWarning(at date: Date) {
+    func scheduleTimerWarning(at date: Date, minutesBeforeEnd: Int) {
         scheduledWarning = date
     }
 
