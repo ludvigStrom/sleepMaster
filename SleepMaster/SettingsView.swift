@@ -34,6 +34,7 @@ struct SettingsView: View {
                         subtitle: "If off, each launch uses the defaults above.",
                         isOn: $state.rememberLastChoice
                     )
+                    warningLeadRow
                 }
 
                 section("WHEN TURNED ON") {
@@ -41,6 +42,11 @@ struct SettingsView: View {
                         title: "Only while plugged in",
                         subtitle: "Pause keep-awake on battery.",
                         isOn: $state.onlyWhilePluggedIn
+                    )
+                    settingsToggle(
+                        title: "Notify when paused on battery",
+                        subtitle: "One banner when keep-awake pauses.",
+                        isOn: $state.notifyOnBatteryPause
                     )
                     batteryFloorRow
                     settingsToggle(
@@ -131,6 +137,33 @@ struct SettingsView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
+            .tint(SleepTheme.amber)
+        }
+    }
+
+    private var warningLeadRow: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Timer warning")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SleepTheme.text)
+                Text("Notify this many minutes before the end.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(SleepTheme.muted)
+            }
+            Spacer()
+            Stepper(
+                value: Binding(
+                    get: { Int(state.timerWarningLead / 60) },
+                    set: { state.timerWarningLead = TimeInterval($0 * 60) }
+                ),
+                in: 1...15
+            ) {
+                Text("\(Int(state.timerWarningLead / 60)) min")
+                    .font(.system(size: 13, weight: .medium).monospacedDigit())
+                    .foregroundStyle(SleepTheme.text)
+                    .frame(minWidth: 44, alignment: .trailing)
+            }
             .tint(SleepTheme.amber)
         }
     }

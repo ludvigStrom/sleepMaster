@@ -32,6 +32,10 @@ final class AppState {
     static let rememberLastDefaultsKey = "rememberLastChoice"
     static let defaultModeDefaultsKey = "defaultMode"
     static let defaultDurationDefaultsKey = "defaultDuration"
+    static let warningLeadDefaultsKey = "timerWarningLead"
+    static let notifyPauseDefaultsKey = "notifyOnBatteryPause"
+    static let defaultWarningLead: TimeInterval = 5 * 60
+    static let defaultPauseNotifyDelay: TimeInterval = 2
 
     var isActive = false {
         didSet {
@@ -44,6 +48,8 @@ final class AppState {
                 endDate = nil
             }
             applyHold()
+            syncTimerNotifications()
+            syncPauseNotification()
         }
     }
 
@@ -92,6 +98,7 @@ final class AppState {
                     endDate = now().addingTimeInterval(selectedDuration)
                 }
             }
+            syncTimerNotifications()
         }
     }
 
@@ -126,6 +133,21 @@ final class AppState {
     var defaultDuration: TimeInterval {
         didSet {
             guard oldValue != defaultDuration, !isSyncing else { return }
+            persistPreferences()
+        }
+    }
+
+    var timerWarningLead: TimeInterval {
+        didSet {
+            guard oldValue != timerWarningLead, !isSyncing else { return }
+            persistPreferences()
+            syncTimerNotifications()
+        }
+    }
+
+    var notifyOnBatteryPause: Bool {
+        didSet {
+            guard oldValue != notifyOnBatteryPause, !isSyncing else { return }
             persistPreferences()
         }
     }
@@ -210,8 +232,13 @@ final class AppState {
 
     private let preventer: SleepPreventer
     private let powerMonitor: PowerMonitoring
+    private let notifications: NotificationPosting
     private let defaults: UserDefaults
+    private let pauseNotifyDelay: TimeInterval
+    private let runAfter: (TimeInterval, @escaping () -> Void) -> () -> Void
     private var isSyncing = false
+    private var wasPaused = false
+    private var cancelPauseNotify: (() -> Void)?
     private let clock = ClockRuntime()
 
     convenience init() {
@@ -222,7 +249,8 @@ final class AppState {
                 lidClosed: CompositeLidClosedBackend(),
                 powerMonitor: power
             ),
-            powerMonitor: power
+            powerMonitor: power,
+            notifications: UserNotificationClient()
         )
     }
 
@@ -233,13 +261,23 @@ final class AppState {
     init(
         preventer: SleepPreventer,
         powerMonitor: PowerMonitoring? = nil,
+        notifications: NotificationPosting? = nil,
         defaults: UserDefaults = .standard,
         now: @escaping () -> Date = { Date() },
-        startsClock: Bool = true
+        startsClock: Bool = true,
+        pauseNotifyDelay: TimeInterval = AppState.defaultPauseNotifyDelay,
+        runAfter: ((TimeInterval, @escaping () -> Void) -> () -> Void)? = nil
     ) {
         self.preventer = preventer
         self.powerMonitor = powerMonitor ?? preventer.powerMonitor
+        self.notifications = notifications ?? IdleNotificationClient()
         self.defaults = defaults
+        self.pauseNotifyDelay = pauseNotifyDelay
+        self.runAfter = runAfter ?? { delay, work in
+            let item = DispatchWorkItem(block: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+            return { item.cancel() }
+        }
         self.now = now
         self.clockNow = now()
         self.isOnAC = self.powerMonitor.isOnAC
@@ -287,6 +325,16 @@ final class AppState {
         } else {
             allowDisplaySleep = defaults.bool(forKey: Self.displaySleepDefaultsKey)
         }
+        if defaults.object(forKey: Self.warningLeadDefaultsKey) == nil {
+            timerWarningLead = Self.defaultWarningLead
+        } else {
+            timerWarningLead = defaults.double(forKey: Self.warningLeadDefaultsKey)
+        }
+        if defaults.object(forKey: Self.notifyPauseDefaultsKey) == nil {
+            notifyOnBatteryPause = true
+        } else {
+            notifyOnBatteryPause = defaults.bool(forKey: Self.notifyPauseDefaultsKey)
+        }
         syncFromPreventer()
         endDate = nil
         isActive = false
@@ -326,12 +374,15 @@ final class AppState {
         clockNow = now()
         if !isActive {
             isActive = true
+        } else {
+            syncTimerNotifications()
         }
     }
 
     func extend(by seconds: TimeInterval) {
         guard isActive, mode == .timer, let endDate else { return }
         self.endDate = endDate.addingTimeInterval(seconds)
+        syncTimerNotifications()
     }
 
     func setUntil(hour: Int, minute: Int, calendar: Calendar = .current) {
@@ -349,6 +400,21 @@ final class AppState {
         clockNow = current
         if !isActive {
             isActive = true
+        } else {
+            syncTimerNotifications()
+        }
+    }
+
+    func handleNotificationAction(_ identifier: String) {
+        switch identifier {
+        case NotificationAction.extend30:
+            extend(by: 30 * 60)
+        case NotificationAction.keepAwake:
+            mode = .indefinitely
+        case NotificationAction.letSleep:
+            isActive = false
+        default:
+            break
         }
     }
 
@@ -401,6 +467,38 @@ final class AppState {
     private func handlePowerChange() {
         syncPowerSnapshot()
         applyHold()
+        syncPauseNotification()
+    }
+
+    private func syncTimerNotifications() {
+        guard isActive, mode == .timer, let endDate else {
+            notifications.cancelTimerWarning()
+            return
+        }
+        notifications.requestPermissionIfNeeded()
+        let fire = endDate.addingTimeInterval(-timerWarningLead)
+        if fire > now() {
+            notifications.scheduleTimerWarning(at: fire)
+        } else {
+            notifications.cancelTimerWarning()
+        }
+    }
+
+    private func syncPauseNotification() {
+        let paused = isPaused
+        if paused && !wasPaused {
+            wasPaused = true
+            guard notifyOnBatteryPause else { return }
+            cancelPauseNotify?()
+            cancelPauseNotify = runAfter(pauseNotifyDelay) { [weak self] in
+                guard let self, self.isPaused, self.notifyOnBatteryPause else { return }
+                self.notifications.notifyPausedOnBattery()
+            }
+        } else if !paused && wasPaused {
+            wasPaused = false
+            cancelPauseNotify?()
+            cancelPauseNotify = nil
+        }
     }
 
     private func syncPowerSnapshot() {
@@ -435,6 +533,8 @@ final class AppState {
         defaults.set(rememberLastChoice, forKey: Self.rememberLastDefaultsKey)
         defaults.set(defaultMode.rawValue, forKey: Self.defaultModeDefaultsKey)
         defaults.set(defaultDuration, forKey: Self.defaultDurationDefaultsKey)
+        defaults.set(timerWarningLead, forKey: Self.warningLeadDefaultsKey)
+        defaults.set(notifyOnBatteryPause, forKey: Self.notifyPauseDefaultsKey)
     }
 
     private func startClock() {

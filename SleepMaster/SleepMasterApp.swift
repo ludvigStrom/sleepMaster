@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UserNotifications
 
 @main
 struct SleepMasterApp: App {
@@ -25,6 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var toggleHotKey: ToggleHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+        UserNotificationClient.registerCategories()
         if NSClassFromString("XCTestCase") == nil {
             HelperClient.registerIfNeeded()
             appState.refresh()
@@ -42,5 +45,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let identifier = response.actionIdentifier
+        await MainActor.run {
+            appState.handleNotificationAction(identifier)
+        }
     }
 }

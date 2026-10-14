@@ -89,10 +89,10 @@ Goal: the Settings board from the design, General and "When turned on" sections 
 
 Goal: no surprise sleep in the middle of a download or render.
 
-- [ ] **7.1 Request notification permission the first time a timer starts, not at launch.** Test: the permission prompt appears only then.
-- [ ] **7.2 Send a timer warning before the end (default 5 min, configurable).** Test: with a 6-minute timer, the banner arrives at about 1 minute in.
-- [ ] **7.3 Add actions to the warning.** Use `UNNotificationCategory` with +30 min, Keep awake (switches to Indefinitely) and Let it sleep. Test: each button does its job without opening the popover.
-- [ ] **7.4 Notify when paused on battery (toggle in Settings).** Test: unplug while on; one banner, and no repeat on every power blip.
+- [x] **7.1 Request notification permission the first time a timer starts, not at launch.** Test: the permission prompt appears only then.
+- [x] **7.2 Send a timer warning before the end (default 5 min, configurable).** Test: with a 6-minute timer, the banner arrives at about 1 minute in.
+- [x] **7.3 Add actions to the warning.** Use `UNNotificationCategory` with +30 min, Keep awake (switches to Indefinitely) and Let it sleep. Test: each button does its job without opening the popover.
+- [x] **7.4 Notify when paused on battery (toggle in Settings).** Test: unplug while on; one banner, and no repeat on every power blip.
 
 ## Phase 8 — Automation
 
