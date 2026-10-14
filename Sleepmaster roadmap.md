@@ -78,12 +78,12 @@ Goal: keep the system awake while the screen is allowed to turn off.
 
 Goal: the Settings board from the design, General and "When turned on" sections first.
 
-- [ ] **6.1 Add a SwiftUI `Settings` scene opened from the popover.** Test: Settings… opens the window in front, and a second click doesn't open a duplicate.
-- [ ] **6.2 Add Launch at login with `SMAppService.mainApp`.** Test: enable, log out and in; the app is running and starts off.
-- [ ] **6.3 Add Show time in menu bar.** Test: switched off, the timer shows only the eye icon.
-- [ ] **6.4 Add default mode, default timer and Remember last choice.** Test: with Remember off, turning on uses the defaults after a relaunch.
-- [ ] **6.5 Add a global toggle shortcut (default ⌥⌘S).** Use the KeyboardShortcuts package or `RegisterEventHotKey`. Test: the shortcut toggles while another app is focused.
-- [ ] **6.6 Mirror the popover toggles in Settings.** "Only while plugged in", the battery floor, display sleep and lid-closed mode live in both places, bound to the same state. Test: changing one updates the other immediately.
+- [x] **6.1 Add a SwiftUI `Settings` scene opened from the popover.** Test: Settings… opens the window in front, and a second click doesn't open a duplicate.
+- [x] **6.2 Add Launch at login with `SMAppService.mainApp`.** Test: enable, log out and in; the app is running and starts off.
+- [x] **6.3 Add Show time in menu bar.** Test: switched off, the timer shows only the eye icon.
+- [x] **6.4 Add default mode, default timer and Remember last choice.** Test: with Remember off, turning on uses the defaults after a relaunch.
+- [x] **6.5 Add a global toggle shortcut (default ⌥⌘S).** Use the KeyboardShortcuts package or `RegisterEventHotKey`. Test: the shortcut toggles while another app is focused.
+- [x] **6.6 Mirror the popover toggles in Settings.** "Only while plugged in", the battery floor, display sleep and lid-closed mode live in both places, bound to the same state. Test: changing one updates the other immediately.
 
 ## Phase 7 — Notifications
 

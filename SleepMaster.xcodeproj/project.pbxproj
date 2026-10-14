@@ -53,6 +53,9 @@
 		A100000000000000000000B6 /* BatteryFloor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000090 /* BatteryFloor.swift */; };
 		A100000000000000000000D9 /* BatteryFloor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000090 /* BatteryFloor.swift */; };
 		A100000000000000000000DA /* AppStatePauseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000091 /* AppStatePauseTests.swift */; };
+		A100000000000000000000F9 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000092 /* SettingsView.swift */; };
+		A100000000000000000000FA /* ToggleHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000093 /* ToggleHotKey.swift */; };
+		A100000000000000000000DB /* AppStateSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000094 /* AppStateSettingsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -118,6 +121,9 @@
 		A100000000000000000000F3 /* AppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000090 /* BatteryFloor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryFloor.swift; sourceTree = "<group>"; };
 		A10000000000000000000091 /* AppStatePauseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStatePauseTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000092 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000093 /* ToggleHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleHotKey.swift; sourceTree = "<group>"; };
+		A10000000000000000000094 /* AppStateSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateSettingsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -164,6 +170,8 @@
 				A100000000000000000000F0 /* AppState.swift */,
 				A100000000000000000000F1 /* MenuBarPopover.swift */,
 				A100000000000000000000F2 /* SleepTheme.swift */,
+				A10000000000000000000092 /* SettingsView.swift */,
+				A10000000000000000000093 /* ToggleHotKey.swift */,
 				A10000000000000000000011 /* SleepPreventer.swift */,
 				A10000000000000000000043 /* SleepController.swift */,
 				A10000000000000000000044 /* PmsetSleepController.swift */,
@@ -208,6 +216,7 @@
 				A1000000000000000000008E /* BatteryCutoffTests.swift */,
 				A100000000000000000000F3 /* AppStateTests.swift */,
 				A10000000000000000000091 /* AppStatePauseTests.swift */,
+				A10000000000000000000094 /* AppStateSettingsTests.swift */,
 			);
 			path = SleepMasterTests;
 			sourceTree = "<group>";
@@ -359,6 +368,8 @@
 				A100000000000000000000F4 /* AppState.swift in Sources */,
 				A100000000000000000000F5 /* MenuBarPopover.swift in Sources */,
 				A100000000000000000000F6 /* SleepTheme.swift in Sources */,
+				A100000000000000000000F9 /* SettingsView.swift in Sources */,
+				A100000000000000000000FA /* ToggleHotKey.swift in Sources */,
 				A10000000000000000000017 /* SleepPreventer.swift in Sources */,
 				A10000000000000000000053 /* SleepController.swift in Sources */,
 				A10000000000000000000054 /* PmsetSleepController.swift in Sources */,
@@ -386,6 +397,7 @@
 				A100000000000000000000D2 /* BatteryCutoffTests.swift in Sources */,
 				A100000000000000000000F8 /* AppStateTests.swift in Sources */,
 				A100000000000000000000DA /* AppStatePauseTests.swift in Sources */,
+				A100000000000000000000DB /* AppStateSettingsTests.swift in Sources */,
 				A100000000000000000000D9 /* BatteryFloor.swift in Sources */,
 				A100000000000000000000F7 /* AppState.swift in Sources */,
 				A10000000000000000000075 /* SleepPreventer.swift in Sources */,

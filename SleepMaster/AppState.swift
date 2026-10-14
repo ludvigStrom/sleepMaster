@@ -28,6 +28,10 @@ final class AppState {
     static let plugOnlyDefaultsKey = "onlyWhilePluggedIn"
     static let batteryFloorDefaultsKey = "batteryFloorPercent"
     static let displaySleepDefaultsKey = "allowDisplaySleep"
+    static let showTimeDefaultsKey = "showTimeInMenuBar"
+    static let rememberLastDefaultsKey = "rememberLastChoice"
+    static let defaultModeDefaultsKey = "defaultMode"
+    static let defaultDurationDefaultsKey = "defaultDuration"
 
     var isActive = false {
         didSet {
@@ -98,6 +102,34 @@ final class AppState {
         }
     }
 
+    var showTimeInMenuBar: Bool {
+        didSet {
+            guard oldValue != showTimeInMenuBar, !isSyncing else { return }
+            persistPreferences()
+        }
+    }
+
+    var rememberLastChoice: Bool {
+        didSet {
+            guard oldValue != rememberLastChoice, !isSyncing else { return }
+            persistPreferences()
+        }
+    }
+
+    var defaultMode: SleepMode {
+        didSet {
+            guard oldValue != defaultMode, !isSyncing else { return }
+            persistPreferences()
+        }
+    }
+
+    var defaultDuration: TimeInterval {
+        didSet {
+            guard oldValue != defaultDuration, !isSyncing else { return }
+            persistPreferences()
+        }
+    }
+
     private(set) var endDate: Date?
     private(set) var clockNow: Date
     private(set) var isOnAC: Bool
@@ -163,6 +195,7 @@ final class AppState {
         if isPaused {
             return "Paused"
         }
+        guard showTimeInMenuBar else { return nil }
         return countdownMenuLabel
     }
 
@@ -211,15 +244,33 @@ final class AppState {
         self.clockNow = now()
         self.isOnAC = self.powerMonitor.isOnAC
         self.batteryPercent = self.powerMonitor.batteryPercent
-        if let raw = defaults.string(forKey: Self.modeDefaultsKey), let stored = SleepMode(rawValue: raw) {
+        let remember = defaults.object(forKey: Self.rememberLastDefaultsKey) == nil
+            ? true
+            : defaults.bool(forKey: Self.rememberLastDefaultsKey)
+        let storedDefaultMode = defaults.string(forKey: Self.defaultModeDefaultsKey)
+            .flatMap(SleepMode.init(rawValue:)) ?? .indefinitely
+        let storedDefaultDuration = defaults.object(forKey: Self.defaultDurationDefaultsKey) != nil
+            ? defaults.double(forKey: Self.defaultDurationDefaultsKey)
+            : TimerDurations.defaultDuration
+        showTimeInMenuBar = defaults.object(forKey: Self.showTimeDefaultsKey) == nil
+            ? true
+            : defaults.bool(forKey: Self.showTimeDefaultsKey)
+        rememberLastChoice = remember
+        defaultMode = storedDefaultMode
+        defaultDuration = storedDefaultDuration
+        if remember, let raw = defaults.string(forKey: Self.modeDefaultsKey), let stored = SleepMode(rawValue: raw) {
             mode = stored
-        } else {
+        } else if remember {
             mode = .indefinitely
-        }
-        if defaults.object(forKey: Self.durationDefaultsKey) != nil {
-            selectedDuration = defaults.double(forKey: Self.durationDefaultsKey)
         } else {
+            mode = storedDefaultMode
+        }
+        if remember, defaults.object(forKey: Self.durationDefaultsKey) != nil {
+            selectedDuration = defaults.double(forKey: Self.durationDefaultsKey)
+        } else if remember {
             selectedDuration = TimerDurations.defaultDuration
+        } else {
+            selectedDuration = storedDefaultDuration
         }
         if defaults.object(forKey: Self.plugOnlyDefaultsKey) == nil {
             onlyWhilePluggedIn = true
@@ -373,11 +424,17 @@ final class AppState {
     }
 
     private func persistPreferences() {
-        defaults.set(mode.rawValue, forKey: Self.modeDefaultsKey)
-        defaults.set(selectedDuration, forKey: Self.durationDefaultsKey)
+        if rememberLastChoice {
+            defaults.set(mode.rawValue, forKey: Self.modeDefaultsKey)
+            defaults.set(selectedDuration, forKey: Self.durationDefaultsKey)
+        }
         defaults.set(onlyWhilePluggedIn, forKey: Self.plugOnlyDefaultsKey)
         defaults.set(batteryFloorPercent, forKey: Self.batteryFloorDefaultsKey)
         defaults.set(allowDisplaySleep, forKey: Self.displaySleepDefaultsKey)
+        defaults.set(showTimeInMenuBar, forKey: Self.showTimeDefaultsKey)
+        defaults.set(rememberLastChoice, forKey: Self.rememberLastDefaultsKey)
+        defaults.set(defaultMode.rawValue, forKey: Self.defaultModeDefaultsKey)
+        defaults.set(defaultDuration, forKey: Self.defaultDurationDefaultsKey)
     }
 
     private func startClock() {

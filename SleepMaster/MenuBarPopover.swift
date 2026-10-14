@@ -37,6 +37,7 @@ struct MenuBarIcon: View {
 
 struct MenuBarPopover: View {
     @Bindable var state: AppState
+    @Environment(\.openSettings) private var openSettings
     @State private var showTimePicker = false
     @State private var specificTime = Date()
 
@@ -84,7 +85,7 @@ struct MenuBarPopover: View {
                 .foregroundStyle(SleepTheme.text)
             Spacer()
             Button {
-                // Settings window arrives in Phase 6.
+                openSettingsWindow()
             } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 13, weight: .medium))
@@ -313,7 +314,7 @@ struct MenuBarPopover: View {
     private var footer: some View {
         HStack {
             Button("Settings…") {
-                // Settings window arrives in Phase 6.
+                openSettingsWindow()
             }
             .buttonStyle(.plain)
             .foregroundStyle(SleepTheme.footer)
@@ -335,6 +336,12 @@ struct MenuBarPopover: View {
             .buttonStyle(.plain)
             .keyboardShortcut("q")
         }
+    }
+
+    private func openSettingsWindow() {
+        NSApp.setActivationPolicy(.regular)
+        openSettings()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func modeButton(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {

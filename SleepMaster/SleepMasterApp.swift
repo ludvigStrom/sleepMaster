@@ -12,23 +12,35 @@ struct SleepMasterApp: App {
             MenuBarIcon(state: appDelegate.appState)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(state: appDelegate.appState)
+        }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
+    private var toggleHotKey: ToggleHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        LoginItem.registerIfNeeded()
         if NSClassFromString("XCTestCase") == nil {
             HelperClient.registerIfNeeded()
             appState.refresh()
             LegacySleepReset.offerIfNeeded()
+            toggleHotKey = ToggleHotKey { [weak self] in
+                self?.appState.toggle()
+            }
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        toggleHotKey?.stop()
         appState.stop()
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 }
