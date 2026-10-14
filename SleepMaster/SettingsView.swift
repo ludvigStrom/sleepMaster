@@ -11,6 +11,21 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 groupedSection("General") {
+                    pickerRow(
+                        title: "Appearance",
+                        showDivider: true
+                    ) {
+                        Picker("Appearance", selection: $state.appearancePreference) {
+                            Text("Light").tag(AppearancePreference.light)
+                            Text("Dark").tag(AppearancePreference.dark)
+                            Text("Follow OS").tag(AppearancePreference.system)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .controlSize(.small)
+                        .frame(maxWidth: 260)
+                        .accessibilityLabel("Appearance")
+                    }
                     toggleRow(
                         title: "Launch at login",
                         isOn: launchAtLoginBinding,
@@ -137,6 +152,7 @@ struct SettingsView: View {
         }
         .frame(minWidth: 520, idealWidth: 540, minHeight: 480)
         .background(SleepTheme.popoverBackground)
+        .preferredColorScheme(state.appearancePreference.colorScheme)
         .onDisappear {
             NSApp.setActivationPolicy(.accessory)
         }
@@ -161,10 +177,10 @@ struct SettingsView: View {
     private var watchedAppsBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Keep awake while these apps are running")
+                Text("Keep awake for these apps")
                     .font(.system(size: 13))
                     .foregroundStyle(SleepTheme.text)
-                Text("Sleep is allowed again when they all quit")
+                Text("Sleep is allowed when busy apps go idle and running apps quit.")
                     .font(.system(size: 11.5))
                     .foregroundStyle(SleepTheme.muted)
             }
@@ -172,19 +188,36 @@ struct SettingsView: View {
             .padding(.top, 12)
             .padding(.bottom, 8)
 
-            ForEach(state.watchedBundleIDs, id: \.self) { bundleID in
+            ForEach(state.watchedApps) { app in
                 divider
-                HStack(spacing: 10) {
+                HStack(alignment: .center, spacing: 10) {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .fill(SleepTheme.iconWell)
                         .frame(width: 22, height: 22)
                         .accessibilityHidden(true)
-                    Text(state.displayName(forBundleID: bundleID))
-                        .font(.system(size: 13))
-                        .foregroundStyle(SleepTheme.text)
-                    Spacer()
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(state.displayName(forBundleID: app.bundleID))
+                            .font(.system(size: 13))
+                            .foregroundStyle(SleepTheme.text)
+                        Picker(
+                            "Keep awake mode for \(state.displayName(forBundleID: app.bundleID))",
+                            selection: Binding(
+                                get: {
+                                    state.watchedApps.first(where: { $0.bundleID == app.bundleID })?.mode ?? app.mode
+                                },
+                                set: { state.setWatchedAppMode($0, for: app.bundleID) }
+                            )
+                        ) {
+                            Text("While running").tag(WatchedAppMode.whileRunning)
+                            Text("While busy").tag(WatchedAppMode.whileBusy)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .controlSize(.small)
+                    }
+                    Spacer(minLength: 8)
                     Button {
-                        state.removeWatchedApp(bundleID: bundleID)
+                        state.removeWatchedApp(bundleID: app.bundleID)
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 10, weight: .semibold))
@@ -192,13 +225,21 @@ struct SettingsView: View {
                             .frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Remove \(state.displayName(forBundleID: bundleID))")
+                    .accessibilityLabel("Remove \(state.displayName(forBundleID: app.bundleID))")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
             }
 
             divider
+            stepperRow(
+                title: "Busy when CPU is over",
+                subtitle: "Of one core, for apps set to While busy",
+                value: $state.busyCPUThresholdPercent,
+                range: 5...80,
+                format: { "\($0)%" },
+                showDivider: true
+            )
             Button("Add app…") {
                 pickApplication()
             }

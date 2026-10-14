@@ -1,6 +1,28 @@
 import AppKit
 import SwiftUI
 
+enum AppearancePreference: String, CaseIterable, Codable, Equatable {
+    case light
+    case dark
+    case system
+
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        case .system: return nil
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .light: return .light
+        case .dark: return .dark
+        case .system: return nil
+        }
+    }
+}
+
 enum SleepTheme {
     static let amber = Color(hex: 0xF2B544)
     static let ink = Color(light: Color(hex: 0x1C1508), dark: Color(hex: 0x1C1508))

@@ -79,6 +79,7 @@ struct OnboardingView: View {
         .padding(28)
         .frame(width: 420)
         .background(SleepTheme.popoverBackground)
+        .preferredColorScheme(state.appearancePreference.colorScheme)
     }
 
     private var launchAtLoginBinding: Binding<Bool> {

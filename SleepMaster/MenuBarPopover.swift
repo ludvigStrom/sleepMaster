@@ -79,6 +79,7 @@ struct MenuBarPopover: View {
         .padding(16)
         .frame(width: 340)
         .background(SleepTheme.popoverBackground)
+        .preferredColorScheme(state.appearancePreference.colorScheme)
         .onAppear {
             state.refresh()
         }

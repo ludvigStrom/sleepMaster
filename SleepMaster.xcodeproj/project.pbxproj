@@ -48,6 +48,7 @@
 		A100000000000000000000F4 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F0 /* AppState.swift */; };
 		A100000000000000000000F5 /* MenuBarPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F1 /* MenuBarPopover.swift */; };
 		A100000000000000000000F6 /* SleepTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F2 /* SleepTheme.swift */; };
+		A100000000000000000000EE /* SleepTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F2 /* SleepTheme.swift */; };
 		A100000000000000000000F7 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F0 /* AppState.swift */; };
 		A100000000000000000000F8 /* AppStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F3 /* AppStateTests.swift */; };
 		A100000000000000000000B6 /* BatteryFloor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000090 /* BatteryFloor.swift */; };
@@ -61,6 +62,8 @@
 		A100000000000000000000DD /* NotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000096 /* NotificationTests.swift */; };
 		A100000000000000000000E3 /* WorkspaceWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000097 /* WorkspaceWatcher.swift */; };
 		A100000000000000000000E4 /* WorkspaceWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000097 /* WorkspaceWatcher.swift */; };
+		A100000000000000000000EC /* ProcessUsageMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009D /* ProcessUsageMonitor.swift */; };
+		A100000000000000000000ED /* ProcessUsageMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009D /* ProcessUsageMonitor.swift */; };
 		A100000000000000000000E5 /* ScheduleWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000098 /* ScheduleWindow.swift */; };
 		A100000000000000000000E6 /* ScheduleWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000098 /* ScheduleWindow.swift */; };
 		A100000000000000000000E7 /* AutomationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000099 /* AutomationTests.swift */; };
@@ -139,6 +142,7 @@
 		A10000000000000000000095 /* NotificationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationClient.swift; sourceTree = "<group>"; };
 		A10000000000000000000096 /* NotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000097 /* WorkspaceWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceWatcher.swift; sourceTree = "<group>"; };
+		A1000000000000000000009D /* ProcessUsageMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessUsageMonitor.swift; sourceTree = "<group>"; };
 		A10000000000000000000098 /* ScheduleWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleWindow.swift; sourceTree = "<group>"; };
 		A10000000000000000000099 /* AutomationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000009A /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -197,6 +201,7 @@
 				A10000000000000000000093 /* ToggleHotKey.swift */,
 				A10000000000000000000095 /* NotificationClient.swift */,
 				A10000000000000000000097 /* WorkspaceWatcher.swift */,
+				A1000000000000000000009D /* ProcessUsageMonitor.swift */,
 				A10000000000000000000011 /* SleepPreventer.swift */,
 				A10000000000000000000043 /* SleepController.swift */,
 				A10000000000000000000044 /* PmsetSleepController.swift */,
@@ -409,6 +414,7 @@
 				A100000000000000000000FA /* ToggleHotKey.swift in Sources */,
 				A100000000000000000000FB /* NotificationClient.swift in Sources */,
 				A100000000000000000000E3 /* WorkspaceWatcher.swift in Sources */,
+				A100000000000000000000EC /* ProcessUsageMonitor.swift in Sources */,
 				A100000000000000000000E5 /* ScheduleWindow.swift in Sources */,
 				A10000000000000000000017 /* SleepPreventer.swift in Sources */,
 				A10000000000000000000053 /* SleepController.swift in Sources */,
@@ -443,9 +449,11 @@
 				A100000000000000000000E7 /* AutomationTests.swift in Sources */,
 				A100000000000000000000EA /* PolishTests.swift in Sources */,
 				A100000000000000000000E4 /* WorkspaceWatcher.swift in Sources */,
+				A100000000000000000000ED /* ProcessUsageMonitor.swift in Sources */,
 				A100000000000000000000E6 /* ScheduleWindow.swift in Sources */,
 				A100000000000000000000D9 /* BatteryFloor.swift in Sources */,
 				A100000000000000000000F7 /* AppState.swift in Sources */,
+				A100000000000000000000EE /* SleepTheme.swift in Sources */,
 				A10000000000000000000075 /* SleepPreventer.swift in Sources */,
 				A10000000000000000000076 /* SleepController.swift in Sources */,
 				A10000000000000000000077 /* PmsetSleepController.swift in Sources */,

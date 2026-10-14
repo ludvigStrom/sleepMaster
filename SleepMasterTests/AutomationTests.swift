@@ -28,6 +28,17 @@ final class FakeWorkspace: WorkspaceWatching {
 }
 
 @MainActor
+final class FakeUsage: ProcessUsageSampling {
+    var percents: [String: Double] = [:]
+
+    func cpuPercent(for bundleID: String) -> Double {
+        percents[bundleID] ?? 0
+    }
+
+    func sample(bundleIDs: [String]) {}
+}
+
+@MainActor
 final class AutomationTests: XCTestCase {
     private let textEditID = "com.apple.TextEdit"
 
@@ -183,10 +194,115 @@ final class AutomationTests: XCTestCase {
         XCTAssertEqual(state.statusSubtitle, "Awake while TextEdit runs")
     }
 
+    func testWhileBusyTurnsOnAboveThresholdAndOffAfterIdle() {
+        let cursorID = "com.todesktop.230313mzl4w5jfd"
+        let workspace = FakeWorkspace()
+        let usage = FakeUsage()
+        workspace.names[cursorID] = "Cursor"
+        let state = makeState(workspace: workspace, usage: usage)
+
+        state.addWatchedApp(bundleID: cursorID, mode: .whileBusy)
+        workspace.launch(cursorID)
+        XCTAssertFalse(state.isActive)
+
+        usage.percents[cursorID] = 40
+        state.tick()
+        XCTAssertFalse(state.isActive)
+        state.tick()
+        XCTAssertTrue(state.isActive)
+        XCTAssertEqual(state.activationReason, .app(bundleID: cursorID, name: "Cursor", busy: true))
+        XCTAssertEqual(state.statusSubtitle, "Awake while Cursor is busy")
+
+        usage.percents[cursorID] = 2
+        for _ in 0..<9 {
+            state.tick()
+            XCTAssertTrue(state.isActive)
+        }
+        state.tick()
+        XCTAssertFalse(state.isActive)
+        XCTAssertNil(state.activationReason)
+    }
+
+    func testWhileRunningStaysOnAtZeroCPU() {
+        let workspace = FakeWorkspace()
+        let usage = FakeUsage()
+        workspace.names[textEditID] = "TextEdit"
+        let state = makeState(workspace: workspace, usage: usage)
+
+        state.addWatchedApp(bundleID: textEditID)
+        workspace.launch(textEditID)
+        usage.percents[textEditID] = 0
+        state.tick()
+        XCTAssertTrue(state.isActive)
+        XCTAssertEqual(state.activationReason, .app(bundleID: textEditID, name: "TextEdit"))
+        XCTAssertEqual(state.statusSubtitle, "Awake while TextEdit runs")
+    }
+
+    func testManualOffWhileBusyLatchesUntilBusyFiresAgain() {
+        let cursorID = "com.todesktop.230313mzl4w5jfd"
+        let workspace = FakeWorkspace()
+        let usage = FakeUsage()
+        workspace.names[cursorID] = "Cursor"
+        let state = makeState(workspace: workspace, usage: usage)
+
+        state.addWatchedApp(bundleID: cursorID, mode: .whileBusy)
+        workspace.launch(cursorID)
+        usage.percents[cursorID] = 40
+        state.tick()
+        state.tick()
+        XCTAssertTrue(state.isActive)
+
+        state.isActive = false
+        XCTAssertFalse(state.isActive)
+        XCTAssertNil(state.activationReason)
+        state.tick()
+        XCTAssertFalse(state.isActive)
+
+        usage.percents[cursorID] = 2
+        for _ in 0..<10 {
+            state.tick()
+        }
+        XCTAssertFalse(state.isActive)
+
+        usage.percents[cursorID] = 40
+        state.tick()
+        XCTAssertFalse(state.isActive)
+        state.tick()
+        XCTAssertTrue(state.isActive)
+        XCTAssertEqual(state.activationReason, .app(bundleID: cursorID, name: "Cursor", busy: true))
+        XCTAssertEqual(state.statusSubtitle, "Awake while Cursor is busy")
+    }
+
+    func testMigratesWatchedBundleIDsToWhileRunning() {
+        let suiteName = "SleepMasterTests.Automation.Migrate.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults.set([textEditID], forKey: AppState.watchedAppsDefaultsKey)
+
+        let state = AppState(
+            preventer: SleepPreventer(
+                controller: FakeSleepController(),
+                lidClosed: NoOpLidClosedBackend(),
+                powerMonitor: FakePowerMonitor(),
+                defaults: defaults
+            ),
+            powerMonitor: FakePowerMonitor(),
+            workspace: FakeWorkspace(),
+            usage: FakeUsage(),
+            defaults: defaults,
+            now: { Date(timeIntervalSince1970: 1) },
+            startsClock: false
+        )
+
+        XCTAssertEqual(state.watchedApps, [WatchedApp(bundleID: textEditID, mode: .whileRunning)])
+        XCTAssertEqual(state.busyCPUThresholdPercent, AppState.defaultBusyCPUPercent)
+    }
+
     private func makeState(
         controller: SleepController? = nil,
         power: FakePowerMonitor? = nil,
         workspace: FakeWorkspace? = nil,
+        usage: ProcessUsageSampling? = nil,
         clock: TestClock? = nil,
         calendar: Calendar = .current
     ) -> AppState {
@@ -208,6 +324,7 @@ final class AutomationTests: XCTestCase {
             ),
             powerMonitor: power,
             workspace: workspace,
+            usage: usage ?? FakeUsage(),
             defaults: defaults,
             now: now,
             calendar: calendar,

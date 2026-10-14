@@ -1,3 +1,5 @@
+import AppKit
+import SwiftUI
 import XCTest
 
 @MainActor
@@ -81,6 +83,37 @@ final class AppStateSettingsTests: XCTestCase {
         XCTAssertTrue(state.allowDisplaySleep)
         XCTAssertFalse(state.lidClosedEnabled)
         XCTAssertEqual(state.batteryFloorPercent, 25)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    func testAppearancePreferencePersistsAndMapsSchemes() {
+        let suiteName = "SleepMasterTests.Settings.Appearance.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let first = AppState(
+            preventer: SleepPreventer(controller: FakeSleepController()),
+            defaults: defaults,
+            now: { Date(timeIntervalSince1970: 1) },
+            startsClock: false
+        )
+        XCTAssertEqual(first.appearancePreference, .system)
+        XCTAssertNil(AppearancePreference.system.colorScheme)
+        XCTAssertNil(AppearancePreference.system.nsAppearance)
+        XCTAssertEqual(AppearancePreference.light.colorScheme, .light)
+        XCTAssertEqual(AppearancePreference.dark.colorScheme, .dark)
+        XCTAssertEqual(AppearancePreference.light.nsAppearance, NSAppearance(named: .aqua))
+        XCTAssertEqual(AppearancePreference.dark.nsAppearance, NSAppearance(named: .darkAqua))
+
+        first.appearancePreference = .dark
+        let second = AppState(
+            preventer: SleepPreventer(controller: FakeSleepController()),
+            defaults: defaults,
+            now: { Date(timeIntervalSince1970: 1) },
+            startsClock: false
+        )
+        XCTAssertEqual(second.appearancePreference, .dark)
 
         defaults.removePersistentDomain(forName: suiteName)
     }

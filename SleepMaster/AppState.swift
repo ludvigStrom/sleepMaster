@@ -9,7 +9,7 @@ enum SleepMode: String, CaseIterable {
 
 enum ActivationReason: Equatable {
     case manual
-    case app(bundleID: String, name: String)
+    case app(bundleID: String, name: String, busy: Bool = false)
     case power
     case schedule
 
@@ -28,6 +28,18 @@ enum AutoReasonKind: String, Hashable {
     case app
     case power
     case schedule
+}
+
+enum WatchedAppMode: String, Codable, CaseIterable {
+    case whileRunning
+    case whileBusy
+}
+
+struct WatchedApp: Codable, Equatable, Identifiable {
+    var bundleID: String
+    var mode: WatchedAppMode
+
+    var id: String { bundleID }
 }
 
 enum TimerDurations {
@@ -59,11 +71,15 @@ final class AppState {
     static let notifyPauseDefaultsKey = "notifyOnBatteryPause"
     static let autoOnPlugDefaultsKey = "autoOnWhenPluggedIn"
     static let watchedAppsDefaultsKey = "watchedBundleIDs"
+    static let watchedAppsJSONDefaultsKey = "watchedApps"
+    static let busyCPUDefaultsKey = "busyCPUThresholdPercent"
+    static let defaultBusyCPUPercent = 25
     static let scheduleEnabledDefaultsKey = "scheduleEnabled"
     static let scheduleDaysDefaultsKey = "scheduleDays"
     static let scheduleStartDefaultsKey = "scheduleStartMinutes"
     static let scheduleEndDefaultsKey = "scheduleEndMinutes"
     static let onboardingDefaultsKey = "didCompleteOnboarding"
+    static let appearanceDefaultsKey = "appearancePreference"
     static let defaultWarningLead: TimeInterval = 5 * 60
     static let defaultPauseNotifyDelay: TimeInterval = 2
 
@@ -198,9 +214,21 @@ final class AppState {
         }
     }
 
-    var watchedBundleIDs: [String] {
+    var watchedApps: [WatchedApp] {
         didSet {
-            guard oldValue != watchedBundleIDs, !isSyncing else { return }
+            guard oldValue != watchedApps, !isSyncing else { return }
+            persistPreferences()
+            applyAutomation()
+        }
+    }
+
+    var watchedBundleIDs: [String] {
+        watchedApps.map(\.bundleID)
+    }
+
+    var busyCPUThresholdPercent: Int {
+        didSet {
+            guard oldValue != busyCPUThresholdPercent, !isSyncing else { return }
             persistPreferences()
             applyAutomation()
         }
@@ -242,6 +270,14 @@ final class AppState {
         didSet {
             guard oldValue != didCompleteOnboarding, !isSyncing else { return }
             persistPreferences()
+        }
+    }
+
+    var appearancePreference: AppearancePreference {
+        didSet {
+            guard oldValue != appearancePreference, !isSyncing else { return }
+            persistPreferences()
+            applyAppearance()
         }
     }
 
@@ -290,8 +326,8 @@ final class AppState {
             switch activationReason {
             case .manual:
                 break
-            case .app(_, let name):
-                return "Awake while \(name) runs"
+            case .app(_, let name, let busy):
+                return busy ? "Awake while \(name) is busy" : "Awake while \(name) runs"
             case .power:
                 return "Awake while plugged in"
             case .schedule:
@@ -368,7 +404,9 @@ final class AppState {
     private let powerMonitor: PowerMonitoring
     private let notifications: NotificationPosting
     private let workspace: WorkspaceWatching
+    private let usage: ProcessUsageSampling
     private let defaults: UserDefaults
+    private var busyTrackers: [String: BusyHysteresis] = [:]
     var calendar: Calendar
     private let pauseNotifyDelay: TimeInterval
     private let runAfter: (TimeInterval, @escaping () -> Void) -> () -> Void
@@ -389,7 +427,8 @@ final class AppState {
             ),
             powerMonitor: power,
             notifications: UserNotificationClient(),
-            workspace: WorkspaceWatcher()
+            workspace: WorkspaceWatcher(),
+            usage: ProcessUsageMonitor()
         )
     }
 
@@ -402,6 +441,7 @@ final class AppState {
         powerMonitor: PowerMonitoring? = nil,
         notifications: NotificationPosting? = nil,
         workspace: WorkspaceWatching? = nil,
+        usage: ProcessUsageSampling? = nil,
         defaults: UserDefaults = .standard,
         now: @escaping () -> Date = { Date() },
         calendar: Calendar = .current,
@@ -413,6 +453,7 @@ final class AppState {
         self.powerMonitor = powerMonitor ?? preventer.powerMonitor
         self.notifications = notifications ?? IdleNotificationClient()
         self.workspace = workspace ?? IdleWorkspace()
+        self.usage = usage ?? IdleProcessUsage()
         self.defaults = defaults
         self.calendar = calendar
         self.pauseNotifyDelay = pauseNotifyDelay
@@ -479,7 +520,19 @@ final class AppState {
             notifyOnBatteryPause = defaults.bool(forKey: Self.notifyPauseDefaultsKey)
         }
         autoOnWhenPluggedIn = defaults.bool(forKey: Self.autoOnPlugDefaultsKey)
-        watchedBundleIDs = defaults.stringArray(forKey: Self.watchedAppsDefaultsKey) ?? []
+        if let data = defaults.data(forKey: Self.watchedAppsJSONDefaultsKey),
+           let decoded = try? JSONDecoder().decode([WatchedApp].self, from: data) {
+            watchedApps = decoded
+        } else {
+            watchedApps = (defaults.stringArray(forKey: Self.watchedAppsDefaultsKey) ?? []).map {
+                WatchedApp(bundleID: $0, mode: .whileRunning)
+            }
+        }
+        if defaults.object(forKey: Self.busyCPUDefaultsKey) != nil {
+            busyCPUThresholdPercent = min(80, max(5, defaults.integer(forKey: Self.busyCPUDefaultsKey)))
+        } else {
+            busyCPUThresholdPercent = Self.defaultBusyCPUPercent
+        }
         scheduleEnabled = defaults.bool(forKey: Self.scheduleEnabledDefaultsKey)
         if let days = defaults.array(forKey: Self.scheduleDaysDefaultsKey) as? [Int] {
             scheduleDays = Set(days)
@@ -497,6 +550,13 @@ final class AppState {
             scheduleEndMinutes = 17 * 60
         }
         didCompleteOnboarding = defaults.bool(forKey: Self.onboardingDefaultsKey)
+        if let raw = defaults.string(forKey: Self.appearanceDefaultsKey),
+           let stored = AppearancePreference(rawValue: raw) {
+            appearancePreference = stored
+        } else {
+            appearancePreference = .system
+        }
+        applyAppearance()
         syncFromPreventer()
         endDate = nil
         isActive = false
@@ -513,13 +573,19 @@ final class AppState {
         }
     }
 
-    func addWatchedApp(bundleID: String) {
-        guard !bundleID.isEmpty, !watchedBundleIDs.contains(bundleID) else { return }
-        watchedBundleIDs.append(bundleID)
+    func addWatchedApp(bundleID: String, mode: WatchedAppMode = .whileRunning) {
+        guard !bundleID.isEmpty, !watchedApps.contains(where: { $0.bundleID == bundleID }) else { return }
+        watchedApps.append(WatchedApp(bundleID: bundleID, mode: mode))
+    }
+
+    func setWatchedAppMode(_ mode: WatchedAppMode, for bundleID: String) {
+        guard let index = watchedApps.firstIndex(where: { $0.bundleID == bundleID }) else { return }
+        watchedApps[index].mode = mode
     }
 
     func removeWatchedApp(bundleID: String) {
-        watchedBundleIDs.removeAll { $0 == bundleID }
+        watchedApps.removeAll { $0.bundleID == bundleID }
+        busyTrackers[bundleID] = nil
     }
 
     func displayName(forBundleID bundleID: String) -> String {
@@ -616,6 +682,7 @@ final class AppState {
 
     func tick() {
         clockNow = now()
+        refreshBusyState()
         if isActive, let endDate, clockNow >= endDate {
             isActive = false
         }
@@ -675,8 +742,8 @@ final class AppState {
 
     private func currentTrueReasons() -> [ActivationReason] {
         var reasons: [ActivationReason] = []
-        if let app = firstRunningWatchedApp() {
-            reasons.append(.app(bundleID: app.id, name: app.name))
+        if let app = firstMatchingWatchedApp() {
+            reasons.append(.app(bundleID: app.id, name: app.name, busy: app.busy))
         }
         if scheduleEnabled, isScheduleActive() {
             reasons.append(.schedule)
@@ -687,10 +754,30 @@ final class AppState {
         return reasons
     }
 
-    private func firstRunningWatchedApp() -> (id: String, name: String)? {
+    private func refreshBusyState() {
+        usage.sample(bundleIDs: watchedBundleIDs)
+        let threshold = Double(busyCPUThresholdPercent)
+        for app in watchedApps where app.mode == .whileBusy {
+            var tracker = busyTrackers[app.bundleID] ?? BusyHysteresis()
+            _ = tracker.sample(usage.cpuPercent(for: app.bundleID), threshold: threshold)
+            busyTrackers[app.bundleID] = tracker
+        }
+    }
+
+    private func firstMatchingWatchedApp() -> (id: String, name: String, busy: Bool)? {
         let running = workspace.runningBundleIDs
-        guard let id = watchedBundleIDs.first(where: { running.contains($0) }) else { return nil }
-        return (id, workspace.displayName(for: id))
+        for app in watchedApps {
+            guard running.contains(app.bundleID) else { continue }
+            switch app.mode {
+            case .whileRunning:
+                return (app.bundleID, workspace.displayName(for: app.bundleID), false)
+            case .whileBusy:
+                if busyTrackers[app.bundleID]?.isBusy == true {
+                    return (app.bundleID, workspace.displayName(for: app.bundleID), true)
+                }
+            }
+        }
+        return nil
     }
 
     private func applyAutomation() {
@@ -803,12 +890,22 @@ final class AppState {
         defaults.set(timerWarningLead, forKey: Self.warningLeadDefaultsKey)
         defaults.set(notifyOnBatteryPause, forKey: Self.notifyPauseDefaultsKey)
         defaults.set(autoOnWhenPluggedIn, forKey: Self.autoOnPlugDefaultsKey)
+        if let data = try? JSONEncoder().encode(watchedApps) {
+            defaults.set(data, forKey: Self.watchedAppsJSONDefaultsKey)
+        }
         defaults.set(watchedBundleIDs, forKey: Self.watchedAppsDefaultsKey)
+        defaults.set(busyCPUThresholdPercent, forKey: Self.busyCPUDefaultsKey)
         defaults.set(scheduleEnabled, forKey: Self.scheduleEnabledDefaultsKey)
         defaults.set(Array(scheduleDays), forKey: Self.scheduleDaysDefaultsKey)
         defaults.set(scheduleStartMinutes, forKey: Self.scheduleStartDefaultsKey)
         defaults.set(scheduleEndMinutes, forKey: Self.scheduleEndDefaultsKey)
         defaults.set(didCompleteOnboarding, forKey: Self.onboardingDefaultsKey)
+        defaults.set(appearancePreference.rawValue, forKey: Self.appearanceDefaultsKey)
+    }
+
+    private func applyAppearance() {
+        guard NSClassFromString("XCTestCase") == nil else { return }
+        NSApp.appearance = appearancePreference.nsAppearance
     }
 
     private func withDisplaySleepSuffix(_ text: String) -> String {
